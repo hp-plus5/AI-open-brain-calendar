@@ -2,7 +2,7 @@
 :root {
   --color-primary: #1a52ad;
   --color-primary-dark: #03143b;
-  --color-primary-light: #eff6ff;
+  --color-primary-light: #fffcedd7;
   --color-secondary: #8b5cf6;
   --color-bg: #f7f3e7;
   --color-surface: #f5e9cc;
@@ -449,6 +449,110 @@ body {
 
 .fc a {
   color: var(--color-text);
+}
+
+/* ─── Custom Recurrence Builder ─────────────────────────────────────────────── */
+.custom-recur {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-top: 8px;
+  background: var(--color-primary-light);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.custom-recur-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.recur-inline-num {
+  width: 58px;
+  padding: 5px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  text-align: center;
+  background: white;
+  color: var(--color-text);
+}
+
+.recur-inline-date {
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  background: white;
+  color: var(--color-text);
+}
+
+/* Day-of-week toggle buttons */
+.recur-day-btns {
+  display: flex;
+  gap: 5px;
+  flex-wrap: nowrap;
+  margin-top: 6px;
+}
+
+.recur-day-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border);
+  background: white;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  flex-shrink: 0;
+  padding: 0;
+  touch-action: manipulation;
+}
+
+.recur-day-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.recur-day-btn.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+/* End-condition radio group */
+.recur-end-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.recur-end-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex-wrap: wrap;
+}
+
+.recur-end-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
 }
 
 /* ─── Error Message ──────────────────────────────────────────────────────────── */
