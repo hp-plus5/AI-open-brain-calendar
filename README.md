@@ -1,5 +1,7 @@
 # Open Brain Calendar
 
+This application is built entirely by AI at Sam's begging, pleading, saying "that's wrong" repeatedly, and thanking.
+
 A personal calendar UI backed by the Open Brain Supabase database. Events live in normalized relational tables (`calendar_events`, `locations`) separate from the freeform `thoughts` table. Deployed on Vercel; auth via Supabase email/password.
 
 ---
