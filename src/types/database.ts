@@ -48,8 +48,24 @@ export interface CalendarEvent {
   updated_at: string
 }
 
-export type CalendarEventInsert = Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'> & {
-  id?: string
+// Only truly required fields (NOT NULL, no DB default) are mandatory.
+// Everything else is optional — nullable columns can be omitted, and columns
+// with DB defaults (all_day, is_cancelled, metadata) don't need to be supplied.
+export type CalendarEventInsert = {
+  id?:               string
+  user_id:           string           // required
+  title:             string           // required
+  start_time:        string           // required
+  description?:      string | null
+  end_time?:         string | null
+  all_day?:          boolean          // DB default: false
+  location_id?:      string | null
+  recurrence_rule?:  string | null
+  parent_event_id?:  string | null
+  recurrence_id?:    string | null
+  is_cancelled?:     boolean          // DB default: false
+  thought_id?:       string | null
+  metadata?:         Record<string, unknown>  // DB default: {}
 }
 
 export type CalendarEventUpdate = Partial<CalendarEventInsert>
@@ -72,8 +88,13 @@ export interface Location {
   updated_at: string
 }
 
-export type LocationInsert = Omit<Location, 'id' | 'created_at' | 'updated_at'> & {
-  id?: string
+export type LocationInsert = {
+  id?:       string
+  user_id:   string   // required
+  name:      string   // required
+  address?:  string | null
+  notes?:    string | null
+  metadata?: Record<string, unknown>  // DB default: {}
 }
 
 export type LocationUpdate = Partial<LocationInsert>

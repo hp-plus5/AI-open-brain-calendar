@@ -9,7 +9,6 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { CalendarEventWithLocation } from '../types/database'
 import EventModal from './EventModal'
-import type { EditScope } from './EventModal'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -131,7 +130,6 @@ interface CalendarViewProps {
 }
 
 export default function CalendarView({ session }: CalendarViewProps) {
-  const [dbEvents, setDbEvents] = useState<CalendarEventWithLocation[]>([])
   const [fcEvents, setFcEvents] = useState<EventInput[]>([])
   const [modal, setModal] = useState<ModalState | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -152,7 +150,6 @@ export default function CalendarView({ session }: CalendarViewProps) {
     }
 
     const events = (data ?? []) as CalendarEventWithLocation[]
-    setDbEvents(events)
     setFcEvents(toFCEvents(events))
   }, [])
 

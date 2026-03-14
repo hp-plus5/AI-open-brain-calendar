@@ -37,6 +37,64 @@ function weekdayAbbr(d: Date): string {
   return ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][d.getDay()]
 }
 
+// ─── Custom Recurrence Builder ─────────────────────────────────────────────────
+
+const WEEKDAYS = [
+  { abbr: 'SU', label: 'Su' },
+  { abbr: 'MO', label: 'Mo' },
+  { abbr: 'TU', label: 'Tu' },
+  { abbr: 'WE', label: 'We' },
+  { abbr: 'TH', label: 'Th' },
+  { abbr: 'FR', label: 'Fr' },
+  { abbr: 'SA', label: 'Sa' },
+] as const
+
+type CustomEndType = 'never' | 'date' | 'count'
+
+interface CustomRecur {
+  interval:  number
+  days:      string[]
+  endType:   CustomEndType
+  endDate:   string   // YYYY-MM-DD
+  endCount:  number
+}
+
+/**
+ * Parse a FREQ=WEEKLY RRULE string into the structured fields used by the
+ * custom builder. Returns safe defaults for non-weekly or unrecognised rules.
+ */
+function parseCustomRrule(rrule: string): CustomRecur {
+  const defaults: CustomRecur = { interval: 1, days: [], endType: 'never', endDate: '', endCount: 1 }
+  if (!rrule.startsWith('FREQ=WEEKLY')) return defaults
+  const parts: Record<string, string> = {}
+  rrule.split(';').forEach(part => {
+    const eq = part.indexOf('=')
+    if (eq !== -1) parts[part.slice(0, eq)] = part.slice(eq + 1)
+  })
+  let endDate = ''
+  if (parts['UNTIL']) {
+    const u = parts['UNTIL'].replace(/T.*$/, '')
+    endDate = `${u.slice(0, 4)}-${u.slice(4, 6)}-${u.slice(6, 8)}`
+  }
+  return {
+    interval: parseInt(parts['INTERVAL'] ?? '1', 10),
+    days:     parts['BYDAY'] ? parts['BYDAY'].split(',') : [],
+    endType:  parts['COUNT'] ? 'count' : parts['UNTIL'] ? 'date' : 'never',
+    endDate,
+    endCount: parseInt(parts['COUNT'] ?? '1', 10),
+  }
+}
+
+/** Build a FREQ=WEEKLY RRULE string from structured fields. */
+function buildCustomRrule(c: CustomRecur): string {
+  let rule = 'FREQ=WEEKLY'
+  if (c.interval > 1)               rule += `;INTERVAL=${c.interval}`
+  if (c.days.length > 0)            rule += `;BYDAY=${c.days.join(',')}`
+  if (c.endType === 'count' && c.endCount > 0)  rule += `;COUNT=${c.endCount}`
+  else if (c.endType === 'date' && c.endDate)   rule += `;UNTIL=${c.endDate.replace(/-/g, '')}T000000Z`
+  return rule
+}
+
 // ─── Recurrence Preset Options ────────────────────────────────────────────────
 
 function getRecurrenceOptions(startDateStr: string) {
@@ -168,7 +226,15 @@ export default function EventModal({
   const [locationName, setLocationName] = useState(event?.locations?.name ?? '')
   const [locationId, setLocationId] = useState<string | null>(event?.location_id ?? null)
   const [recurrenceRule, setRecurrenceRule] = useState(event?.recurrence_rule ?? '')
-  const [customRrule, setCustomRrule] = useState('')
+
+  // Custom recurrence builder — pre-populated from existing rule when editing
+  const initialCustom = parseCustomRrule(event?.recurrence_rule ?? '')
+  const [customInterval, setCustomInterval]   = useState(initialCustom.interval)
+  const [customDays,     setCustomDays]       = useState<string[]>(initialCustom.days)
+  const [customEndType,  setCustomEndType]    = useState<CustomEndType>(initialCustom.endType)
+  const [customEndDate,  setCustomEndDate]    = useState(initialCustom.endDate)
+  const [customEndCount, setCustomEndCount]   = useState(initialCustom.endCount)
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -212,7 +278,10 @@ export default function EventModal({
 
       const startUTC = allDay ? startDT.slice(0, 10) + 'T00:00:00.000Z' : easternInputToUTC(startDT)
       const endUTC = endDT ? (allDay ? endDT.slice(0, 10) + 'T00:00:00.000Z' : easternInputToUTC(endDT)) : null
-      const finalRrule = recurrenceRule === '__custom__' ? customRrule : recurrenceRule
+      const inCustomMode = recurrenceRule === '__custom__' || Boolean(isCustomRrule)
+      const finalRrule = inCustomMode
+        ? buildCustomRrule({ interval: customInterval, days: customDays, endType: customEndType, endDate: customEndDate, endCount: customEndCount })
+        : recurrenceRule
 
       if (isNew) {
         // ── Create new event ──
@@ -400,17 +469,90 @@ export default function EventModal({
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              {(recurrenceRule === '__custom__' || isCustomRrule) && (
-                <input
-                  type="text"
-                  value={isCustomRrule ? recurrenceRule : customRrule}
-                  onChange={e => {
-                    setCustomRrule(e.target.value)
-                    setRecurrenceRule(e.target.value)
-                  }}
-                  placeholder="e.g. FREQ=WEEKLY;BYDAY=MO,WE;COUNT=10"
-                  style={{ marginTop: 8 }}
-                />
+              {(recurrenceRule === '__custom__' || Boolean(isCustomRrule)) && (
+                <div className="custom-recur">
+
+                  {/* ── Interval ── */}
+                  <div className="custom-recur-row">
+                    <span>Every</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={52}
+                      value={customInterval}
+                      onChange={e => setCustomInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="recur-inline-num"
+                    />
+                    <span>week{customInterval !== 1 ? 's' : ''}</span>
+                  </div>
+
+                  {/* ── Day toggles ── */}
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Repeat on</label>
+                    <div className="recur-day-btns">
+                      {WEEKDAYS.map(d => (
+                        <button
+                          key={d.abbr}
+                          type="button"
+                          aria-pressed={customDays.includes(d.abbr)}
+                          title={['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][WEEKDAYS.findIndex(w => w.abbr === d.abbr)]}
+                          className={`recur-day-btn${customDays.includes(d.abbr) ? ' active' : ''}`}
+                          onClick={() => setCustomDays(prev =>
+                            prev.includes(d.abbr) ? prev.filter(x => x !== d.abbr) : [...prev, d.abbr]
+                          )}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── End condition ── */}
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Ends</label>
+                    <div className="recur-end-options">
+
+                      <label className="recur-end-option">
+                        <input type="radio" name="recur-end" checked={customEndType === 'never'}
+                          onChange={() => setCustomEndType('never')} />
+                        <span>Never</span>
+                      </label>
+
+                      <label className="recur-end-option">
+                        <input type="radio" name="recur-end" checked={customEndType === 'date'}
+                          onChange={() => setCustomEndType('date')} />
+                        <span>On</span>
+                        {customEndType === 'date' && (
+                          <input
+                            type="date"
+                            value={customEndDate}
+                            onChange={e => setCustomEndDate(e.target.value)}
+                            className="recur-inline-date"
+                          />
+                        )}
+                      </label>
+
+                      <label className="recur-end-option">
+                        <input type="radio" name="recur-end" checked={customEndType === 'count'}
+                          onChange={() => setCustomEndType('count')} />
+                        <span>After</span>
+                        {customEndType === 'count' && (
+                          <input
+                            type="number"
+                            min={1}
+                            max={999}
+                            value={customEndCount}
+                            onChange={e => setCustomEndCount(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="recur-inline-num"
+                          />
+                        )}
+                        <span>occurrence{customEndType === 'count' && customEndCount !== 1 ? 's' : ''}</span>
+                      </label>
+
+                    </div>
+                  </div>
+
+                </div>
               )}
             </div>
           )}
