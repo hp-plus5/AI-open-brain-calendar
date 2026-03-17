@@ -5,3 +5,5 @@ dist
 *.local
 package-lock.json
 .DS_Store
+test-results/
+tests/.auth/*
