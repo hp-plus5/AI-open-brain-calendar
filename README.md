@@ -162,6 +162,8 @@ The service role key bypasses RLS and is required for bulk import. Get it from S
 
 ## Adding Future Features
 
+All new tables should follow the same pattern| `user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE` with a matching RLS policy and `set_updated_at()` trigger.
+
 The schema was designed with these phases in mind. See `Documentation/phase-1-plan.md` for full SQL.
 
 - **Contacts + event attendees** — `contacts` table + `event_attendees` junction; enables "last time I met with X" queries
@@ -169,4 +171,12 @@ The schema was designed with these phases in mind. See `Documentation/phase-1-pl
 - **Telegram calendar management** — new intent types in `ingest-thought`; already works via MCP today
 - **Semantic search** — `calendar-embed` Edge Function writes event summaries to `thoughts` and stores `thought_id` back on the event row
 
-All new tables should follow the same pattern: `user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE` with a matching RLS policy and `set_updated_at()` trigger.
+|Future Features | Where It Goes|
+|----|----|
+|Semantic search|services/searchService.ts · hooks/useSearch.ts · components/search/SearchModal.tsx|
+|Telegram integration|services/telegramService.ts (webhook handler or edge fn bridge)|
+|Tasks (with prerequisites)|services/taskService.ts · hooks/useTaskData.ts · components/tasks/TaskView.tsx, TaskModal.tsx — prerequisites as a task_prerequisites join table|
+|Contacts|services/contactService.ts · hooks/useContacts.ts · components/contacts/ContactView.tsx|
+|Event↔Contact links|New join table + services/eventService.ts extended with linkContact|
+
+No new architectural pattern is expected to be needed to be introduced after our ongoing refactor — just new files following the same shape.
