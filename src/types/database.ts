@@ -14,6 +14,18 @@ export interface Database {
         Update: CalendarEventUpdate
         Relationships: []
       }
+      calendars: {
+        Row: Calendar
+        Insert: CalendarInsert
+        Update: Partial<CalendarInsert>
+        Relationships: []
+      }
+      calendar_event_calendars: {
+        Row: CalendarEventCalendar
+        Insert: CalendarEventCalendar
+        Update: CalendarEventCalendar
+        Relationships: []
+      }
       locations: {
         Row: Location
         Insert: LocationInsert
@@ -73,6 +85,30 @@ export type CalendarEventUpdate = Partial<CalendarEventInsert>
 // CalendarEvent with location joined in (from Supabase .select('*, locations(...)'))
 export interface CalendarEventWithLocation extends CalendarEvent {
   locations: Pick<Location, 'id' | 'name' | 'address'> | null
+}
+
+// ─── Calendars ────────────────────────────────────────────────────────────────
+
+export interface Calendar {
+  id: string
+  user_id: string
+  name: string
+  color: string
+  created_at: string
+  updated_at: string
+}
+
+export type CalendarInsert = {
+  id?:      string
+  user_id:  string   // required
+  name:     string   // required
+  color?:   string   // DB default: '#3b82f6'
+}
+
+export interface CalendarEventCalendar {
+  event_id:    string
+  calendar_id: string
+  user_id:     string
 }
 
 // ─── Locations ────────────────────────────────────────────────────────────────
