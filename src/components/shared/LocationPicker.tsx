@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import type { Location } from '../types/database'
-import { supabase } from '../lib/supabase'
+import type { Location } from '../../types/database'
+import { supabase } from '../../lib/supabase'
 
 interface LocationPickerProps {
   value: string        // display name of currently selected location
