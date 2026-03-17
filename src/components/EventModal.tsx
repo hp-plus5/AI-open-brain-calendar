@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { toZonedTime, fromZonedTime, format as tzFormat } from 'date-fns-tz'
-import type { CalendarEventWithLocation } from '../types/database'
+import type { CalendarEventWithLocation, Calendar } from '../types/database'
 import LocationPicker from './LocationPicker'
 import { supabase } from '../lib/supabase'
 import type { Session } from '@supabase/supabase-js'
@@ -35,6 +35,32 @@ function toInputDT(isoStr: string, isAllDay: boolean): string {
 /** Derive a weekly BYDAY string from a Date (e.g. "MO") */
 function weekdayAbbr(d: Date): string {
   return ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][d.getDay()]
+}
+
+/**
+ * Given a clicked occurrence's start (UTC ISO or date-only string), compute the
+ * occurrence's end time as a datetime-local input string, preserving the master
+ * event's duration.
+ */
+function computeOccurrenceEndInput(
+  occurrenceStart: string,
+  masterStart: string,
+  masterEnd: string,
+  isAllDay: boolean
+): string {
+  if (isAllDay) {
+    // All-day: duration in whole days (end is exclusive, so Jan 6–Jan 7 = 1 day)
+    const startMs = new Date(masterStart.includes('T') ? masterStart : masterStart + 'T00:00:00Z').getTime()
+    const endMs   = new Date(masterEnd.includes('T')   ? masterEnd   : masterEnd   + 'T00:00:00Z').getTime()
+    const durationDays = Math.round((endMs - startMs) / 86400000)
+    const occStartMs = new Date(occurrenceStart.includes('T') ? occurrenceStart : occurrenceStart + 'T00:00:00Z').getTime()
+    const occEndMs = occStartMs + durationDays * 86400000
+    return new Date(occEndMs).toISOString().slice(0, 10) + 'T00:00'
+  } else {
+    const durationMs = new Date(masterEnd).getTime() - new Date(masterStart).getTime()
+    const occEndMs = new Date(occurrenceStart).getTime() + durationMs
+    return utcToEasternInput(new Date(occEndMs).toISOString())
+  }
 }
 
 // ─── Custom Recurrence Builder ─────────────────────────────────────────────────
@@ -126,6 +152,10 @@ export interface EventModalProps {
   defaultEnd?: string
   defaultAllDay?: boolean
   session: Session
+  /** All calendars for the current user */
+  calendars: Calendar[]
+  /** Calendar IDs already associated with this event (pre-selects checkboxes) */
+  initialCalendarIds: string[]
   onClose: () => void
   /** Called after a successful save or delete so CalendarView can refresh */
   onSaved: () => void
@@ -183,11 +213,16 @@ export default function EventModal({
   defaultEnd,
   defaultAllDay = false,
   session,
+  calendars,
+  initialCalendarIds,
   onClose,
   onSaved,
 }: EventModalProps) {
   const isNew = event === null
   const isRecurring = !!event?.recurrence_rule && !event?.parent_event_id
+  // An override row is a child exception that was previously edited (parent_event_id is set,
+  // recurrence_rule is null). It needs special delete handling — see handleDelete below.
+  const isOverride = !isNew && !!event?.parent_event_id
 
   // If this is a recurring event click, show scope choice first
   const [scopeChosen, setScopeChosen] = useState<EditScope | null>(
@@ -237,11 +272,21 @@ export default function EventModal({
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>(initialCalendarIds)
 
-  // Update startDT when scope is chosen (for 'this', use the clicked occurrence time)
+  // Update startDT/endDT when scope is chosen (for 'this', use the clicked occurrence time)
   useEffect(() => {
     if (event && scopeChosen === 'this' && occurrenceStart) {
       setStartDT(toInputDT(occurrenceStart, event.all_day))
+      // Recompute end time: occurrence start + master event duration
+      if (event.end_time) {
+        setEndDT(computeOccurrenceEndInput(
+          occurrenceStart,
+          event.start_time,
+          event.end_time,
+          event.all_day
+        ))
+      }
     }
   }, [scopeChosen, event, occurrenceStart])
 
@@ -251,6 +296,23 @@ export default function EventModal({
   // If we haven't chosen scope yet, show the choice dialog
   if (showScopeChoice && isRecurring && scopeChosen === null) {
     return <RecurrenceScopeChoice onChoose={setScopeChosen} onClose={onClose} />
+  }
+
+  // ─── Calendar Memberships ──────────────────────────────────────────────────
+
+  async function saveCalendarMemberships(eventId: string) {
+    // Replace existing memberships for this event
+    await supabase.from('calendar_event_calendars').delete().eq('event_id', eventId)
+    if (selectedCalendarIds.length > 0) {
+      const { error: linkErr } = await supabase.from('calendar_event_calendars').insert(
+        selectedCalendarIds.map(calId => ({
+          event_id: eventId,
+          calendar_id: calId,
+          user_id: session.user.id,
+        }))
+      )
+      if (linkErr) throw linkErr
+    }
   }
 
   // ─── Save ─────────────────────────────────────────────────────────────────
@@ -285,17 +347,22 @@ export default function EventModal({
 
       if (isNew) {
         // ── Create new event ──
-        const { error: err } = await supabase.from('calendar_events').insert({
-          user_id: session.user.id,
-          title: title.trim(),
-          description: description.trim() || null,
-          start_time: startUTC,
-          end_time: endUTC,
-          all_day: allDay,
-          location_id: resolvedLocationId,
-          recurrence_rule: finalRrule || null,
-        })
+        const { data: newRow, error: err } = await supabase
+          .from('calendar_events')
+          .insert({
+            user_id: session.user.id,
+            title: title.trim(),
+            description: description.trim() || null,
+            start_time: startUTC,
+            end_time: endUTC,
+            all_day: allDay,
+            location_id: resolvedLocationId,
+            recurrence_rule: finalRrule || null,
+          })
+          .select('id')
+          .single()
         if (err) throw err
+        await saveCalendarMemberships(newRow.id)
 
       } else if (scopeChosen === 'series' || !isRecurring) {
         // ── Edit entire series (or non-recurring event) ──
@@ -312,22 +379,27 @@ export default function EventModal({
           })
           .eq('id', event!.id)
         if (err) throw err
+        await saveCalendarMemberships(event!.id)
 
       } else {
         // ── Edit just this occurrence: create an exception child row ──
-        // The parent_event_id points to the master; recurrence_id is the original start time
-        const { error: err } = await supabase.from('calendar_events').insert({
-          user_id: session.user.id,
-          title: title.trim(),
-          description: description.trim() || null,
-          start_time: startUTC,
-          end_time: endUTC,
-          all_day: allDay,
-          location_id: resolvedLocationId,
-          parent_event_id: event!.parent_event_id ?? event!.id,
-          recurrence_id: occurrenceStart ? new Date(occurrenceStart).toISOString() : startUTC,
-        })
+        const { data: newRow, error: err } = await supabase
+          .from('calendar_events')
+          .insert({
+            user_id: session.user.id,
+            title: title.trim(),
+            description: description.trim() || null,
+            start_time: startUTC,
+            end_time: endUTC,
+            all_day: allDay,
+            location_id: resolvedLocationId,
+            parent_event_id: event!.parent_event_id ?? event!.id,
+            recurrence_id: occurrenceStart ? new Date(occurrenceStart).toISOString() : startUTC,
+          })
+          .select('id')
+          .single()
         if (err) throw err
+        await saveCalendarMemberships(newRow.id)
       }
 
       onSaved()
@@ -341,8 +413,10 @@ export default function EventModal({
 
   async function handleDelete() {
     if (!event) return
-    if (!confirm(isRecurring && scopeChosen === 'this'
-      ? 'Cancel this occurrence?'
+
+    const removingOccurrence = (isRecurring && scopeChosen === 'this') || isOverride
+    if (!confirm(removingOccurrence
+      ? 'Remove this occurrence? The rest of the series will be unaffected.'
       : 'Delete this event? This cannot be undone.')) return
 
     setSaving(true)
@@ -350,7 +424,8 @@ export default function EventModal({
 
     try {
       if (isRecurring && scopeChosen === 'this') {
-        // Cancel just this occurrence: insert a cancelled child row
+        // Cancelling one occurrence of a master recurring event:
+        // insert a cancelled child row so the rrule suppresses that date.
         const { error: err } = await supabase.from('calendar_events').insert({
           user_id: session.user.id,
           title: event.title,
@@ -361,8 +436,21 @@ export default function EventModal({
           is_cancelled: true,
         })
         if (err) throw err
+
+      } else if (isOverride) {
+        // Cancelling an already-edited occurrence (override row with parent_event_id set).
+        // We must NOT delete the row — that would remove the recurrence_id anchor and let
+        // the master's rrule regenerate the original occurrence.
+        // Instead, flip is_cancelled = true so it stays as an exdate suppressor but
+        // stops rendering as a visible one-off event.
+        const { error: err } = await supabase
+          .from('calendar_events')
+          .update({ is_cancelled: true })
+          .eq('id', event.id)
+        if (err) throw err
+
       } else {
-        // Delete the event (cascades to children via FK)
+        // Delete the event entirely (cascades to child exception rows via FK).
         const { error: err } = await supabase
           .from('calendar_events')
           .delete()
@@ -380,7 +468,7 @@ export default function EventModal({
 
   const editingLabel = isNew
     ? 'New Event'
-    : scopeChosen === 'this'
+    : (scopeChosen === 'this' || isOverride)
       ? 'Edit This Occurrence'
       : 'Edit Event'
 
@@ -557,6 +645,32 @@ export default function EventModal({
             </div>
           )}
 
+          {/* Calendars */}
+          {calendars.length > 0 && (
+            <div className="form-group">
+              <label>Calendars</label>
+              <div className="calendar-picker">
+                {calendars.map(cal => (
+                  <label key={cal.id} className="calendar-picker-option">
+                    <input
+                      type="checkbox"
+                      checked={selectedCalendarIds.includes(cal.id)}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setSelectedCalendarIds(prev => [...prev, cal.id])
+                        } else {
+                          setSelectedCalendarIds(prev => prev.filter(id => id !== cal.id))
+                        }
+                      }}
+                    />
+                    <span className="calendar-picker-dot" style={{ backgroundColor: cal.color }} />
+                    <span>{cal.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Description */}
           <div className="form-group">
             <label htmlFor="evt-desc">Description</label>
@@ -573,7 +687,7 @@ export default function EventModal({
           {!isNew && (
             <div className="modal-footer-left">
               <button className="btn btn-danger" onClick={handleDelete} disabled={saving}>
-                {isRecurring && scopeChosen === 'this' ? 'Cancel occurrence' : 'Delete'}
+                {(isRecurring && scopeChosen === 'this') || isOverride ? 'Remove occurrence' : 'Delete'}
               </button>
             </div>
           )}
