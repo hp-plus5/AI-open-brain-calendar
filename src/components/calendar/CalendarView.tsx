@@ -1,6 +1,7 @@
 // Top-level view: owns modal state and event-drop handling; composes everything else.
 
 import { useState, useMemo } from 'react'
+import { format } from 'date-fns'
 import type { EventClickArg, DateSelectArg, DateClickArg, EventDropArg } from '@fullcalendar/core'
 import type { Session } from '@supabase/supabase-js'
 import type { CalendarEventWithLocation } from '../../types/database'
@@ -51,6 +52,12 @@ export default function CalendarView({ session }: CalendarViewProps) {
   const drawer = useDrawer()
 
   const [modal, setModal] = useState<ModalState | null>(null)
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date())
+
+  const isCurrentYear = currentDate.getFullYear() === new Date().getFullYear()
+  const monthLabel = isCurrentYear
+    ? format(currentDate, 'MMMM')
+    : format(currentDate, 'MMMM yyyy')
 
   // ─── FullCalendar event list (memoized) ─────────────────────────────────
 
@@ -151,7 +158,7 @@ export default function CalendarView({ session }: CalendarViewProps) {
           >
             ☰
           </button>
-          <span className="calendar-topbar-title">Open Brain Calendar</span>
+          <span className="calendar-topbar-title">{monthLabel}</span>
         </div>
       </header>
 
@@ -189,6 +196,7 @@ export default function CalendarView({ session }: CalendarViewProps) {
             onDateClick={handleDateClick}
             onEventClick={handleEventClick}
             onEventDrop={handleEventDrop}
+            onDatesSet={setCurrentDate}
           />
         </div>
       </div>

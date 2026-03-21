@@ -7,7 +7,7 @@ import dayGridPlugin     from '@fullcalendar/daygrid'
 import timeGridPlugin    from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import rrulePlugin       from '@fullcalendar/rrule'
-import type { EventInput, EventClickArg, DateSelectArg, DateClickArg, EventDropArg } from '@fullcalendar/core'
+import type { EventInput, EventClickArg, DateSelectArg, DateClickArg, EventDropArg, DatesSetArg } from '@fullcalendar/core'
 
 interface CalendarGridProps {
   events:        EventInput[]
@@ -15,6 +15,7 @@ interface CalendarGridProps {
   onDateClick:   (info: DateClickArg)   => void
   onEventClick:  (info: EventClickArg)  => void
   onEventDrop:   (info: EventDropArg)   => void
+  onDatesSet?:   (date: Date)           => void
 }
 
 export default function CalendarGrid({
@@ -23,12 +24,17 @@ export default function CalendarGrid({
   onDateClick,
   onEventClick,
   onEventDrop,
+  onDatesSet,
 }: CalendarGridProps) {
   const calendarRef = useRef<FullCalendar>(null)
 
   function handleDateSelect(info: DateSelectArg) {
     onDateSelect(info)
     calendarRef.current?.getApi().unselect()
+  }
+
+  function handleDatesSet(info: DatesSetArg) {
+    onDatesSet?.(info.view.currentStart)
   }
 
   return (
@@ -40,7 +46,7 @@ export default function CalendarGrid({
         timeZone="America/New_York"
         headerToolbar={{
           left:   'prev,next today',
-          center: 'title',
+          center: '',
           right:  'dayGridMonth,timeGridWeek,timeGridDay',
         }}
         height="100%"
@@ -54,6 +60,7 @@ export default function CalendarGrid({
         dateClick={onDateClick}
         eventClick={onEventClick}
         eventDrop={onEventDrop}
+        datesSet={handleDatesSet}
         moreLinkClick="popover"
       />
     </div>
