@@ -50,6 +50,7 @@ export default function CalendarView({ session }: CalendarViewProps) {
   })
 
   const drawer = useDrawer()
+  const { isMobile } = drawer
 
   const [modal, setModal] = useState<ModalState | null>(null)
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date())
@@ -150,14 +151,16 @@ export default function CalendarView({ session }: CalendarViewProps) {
     <div className="calendar-layout">
       <header className="calendar-topbar">
         <div className="calendar-topbar-start">
-          <button
-            className="calendar-menu-toggle btn btn-ghost"
-            onClick={drawer.toggle}
-            aria-label="Toggle calendar list"
-            aria-expanded={drawer.isOpen}
-          >
-            ☰
-          </button>
+          {isMobile && (
+            <button
+              className="calendar-menu-toggle btn btn-ghost"
+              onClick={drawer.toggle}
+              aria-label="Toggle calendar list"
+              aria-expanded={drawer.isOpen}
+            >
+              ☰
+            </button>
+          )}
           <span className="calendar-topbar-title">{monthLabel}</span>
         </div>
       </header>
@@ -179,7 +182,7 @@ export default function CalendarView({ session }: CalendarViewProps) {
             onRenameCommit={actions.commitRenameCalendar}
             onRenameKeyDown={actions.handleRenameKeyDown}
             onExport={actions.handleExportCalendar}
-            onClose={drawer.close}
+            onClose={isMobile ? drawer.close : undefined}
             onSignOut={() => supabase.auth.signOut()}
           />
         </Drawer>
