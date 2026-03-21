@@ -656,6 +656,41 @@ body {
   width: 100%;
 }
 
+/* Pinch-to-zoom: --slot-height is set as an inline style by CalendarGrid.
+   Three rules work together to let slot cells shrink below the natural text height:
+   1. The cell height is driven by the CSS var (overrides FC's height: 1.5em).
+   2. line-height: 0 on the frame eliminates the implicit CSS "strut" (~19.5px)
+      so the frame's natural height equals the inline-block cushion's height only.
+   3. The cushion (inline-block) has an explicit height = CSS var, which IS its
+      natural height in an inline formatting context, so table layout uses it. */
+.calendar-grid-wrapper .fc-timegrid-slot {
+  height: var(--slot-height, 24px) !important;
+  min-height: 0 !important;
+}
+/* Suppress FC's `content: " "` hack that forces lane cells to ~19.5px */
+.calendar-grid-wrapper .fc-timegrid-slot:empty::before {
+  content: none;
+}
+.calendar-grid-wrapper .fc-timegrid-slot-label-frame {
+  line-height: 0;
+  /* No overflow clipping — labels grow downward over the half-hour line. */
+  position: relative;
+  z-index: 1; /* paint above the horizontal grid lines */
+}
+.calendar-grid-wrapper .fc-timegrid-slot-label-cushion {
+  height: var(--slot-height, 24px);
+  line-height: 1.5;
+  /* No overflow clipping — text flows below the cushion box into the next slot. */
+  box-sizing: border-box;
+  /*
+   * Shrink font uniformly once the text (font-size × 1.5 line-height) would
+   * overflow past the next hour label, which sits 2 slots below.
+   * Derivation: font-size × 1.5 ≤ 2 × slot-height  →  font-size ≤ slot-height × 1.333
+   * The min() caps at 0.75 rem so we never exceed the normal label size.
+   */
+  font-size: min(0.75rem, calc(var(--slot-height, 24px) * 1.333));
+}
+
 .fc {
   height: 100%;
 }
