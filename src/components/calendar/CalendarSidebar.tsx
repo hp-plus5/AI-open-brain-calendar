@@ -15,6 +15,8 @@ interface CalendarSidebarProps {
   onRenameCommit:    (calendarId: string) => void
   onRenameKeyDown:   (e: React.KeyboardEvent, calendarId: string) => void
   onExport:          (calendar: Calendar) => void
+  /** When provided, renders a close button (visible on mobile only via CSS) */
+  onClose?:          () => void
 }
 
 export default function CalendarSidebar({
@@ -28,10 +30,22 @@ export default function CalendarSidebar({
   onRenameCommit,
   onRenameKeyDown,
   onExport,
+  onClose,
 }: CalendarSidebarProps) {
   return (
     <aside className="calendar-sidebar">
-      <div className="sidebar-section-title">Calendars</div>
+      <div className="sidebar-section-title">
+        Calendars
+        {onClose && (
+          <button
+            className="calendar-sidebar__close-btn btn btn-ghost"
+            onClick={onClose}
+            aria-label="Close calendar list"
+          >
+            ✕
+          </button>
+        )}
+      </div>
       {calendars.map(calendar => (
         <div key={calendar.id} className="sidebar-calendar-item">
           <label className="sidebar-calendar-label">
