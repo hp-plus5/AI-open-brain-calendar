@@ -109,6 +109,12 @@ body {
   box-shadow: var(--shadow);
 }
 
+.calendar-topbar-start {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .calendar-topbar-title {
   font-size: 1rem;
   font-weight: 600;
@@ -143,6 +149,9 @@ body {
 }
 
 .sidebar-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -231,6 +240,86 @@ body {
   flex: 1;
   min-width: 0;
   outline: none;
+}
+
+/* ─── Drawer (reusable overlay primitive) ───────────────────────────────────── */
+:root {
+  --drawer-width: 260px;
+  --drawer-z-index: 900; /* below modal at 1000 */
+  --drawer-duration: 260ms;
+  --drawer-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Backdrop — invisible and inert on desktop; activated on mobile */
+.drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: var(--drawer-z-index);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--drawer-duration) var(--drawer-ease);
+}
+
+.drawer-backdrop--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Panel — CSS drives static vs overlay; JS only toggles class names */
+.drawer {
+  z-index: calc(var(--drawer-z-index) + 1);
+  transition: transform var(--drawer-duration) var(--drawer-ease);
+}
+
+.drawer--left  { transform: translateX(-100%); }
+.drawer--right { transform: translateX(100%);  }
+.drawer--open  { transform: translateX(0);     }
+
+/* Toggle button (hamburger) and close button are hidden on desktop */
+.calendar-menu-toggle       { display: none; }
+.calendar-sidebar__close-btn { display: none; }
+
+/* ─── Mobile (≤ 768px) ───────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .drawer-backdrop { display: block; }
+
+  /* On mobile the drawer becomes a fixed overlay panel */
+  .drawer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: var(--drawer-width);
+    overflow-y: auto;
+    background: var(--color-surface);
+  }
+
+  .drawer--left  { left: 0; }
+  .drawer--right { right: 0; }
+
+  /* Sidebar fills the drawer panel; its own width/border are overridden */
+  .calendar-sidebar {
+    width: 100%;
+    border-right: none;
+  }
+
+  .calendar-menu-toggle        { display: flex; }
+  .calendar-sidebar__close-btn { display: flex; }
+}
+
+/* ─── Desktop (≥ 769px): drawer is static — no overlay, no transform ────────── */
+@media (min-width: 769px) {
+  /* transform: none !important keeps the sidebar in normal flow even when
+     isOpen is true (stale state from a prior mobile session). */
+  .drawer {
+    position: static;
+    transform: none !important;
+    width: auto;
+    z-index: auto;
+  }
+
+  .drawer-backdrop { display: none !important; }
 }
 
 /* ─── Calendar Main Area ─────────────────────────────────────────────────────── */
