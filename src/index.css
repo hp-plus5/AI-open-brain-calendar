@@ -508,7 +508,8 @@ body {
 }
 
 /* ─── FullCalendar Overrides ─────────────────────────────────────────────────── */
-.fc-wrapper {
+/* Wrapper div that gives FullCalendar a fixed height within the layout */
+.calendar-grid-wrapper {
   height: calc(100vh - 56px - 32px); /* topbar height + top+bottom padding */
   width: 100%;
 }
@@ -565,7 +566,7 @@ body {
 }
 
 /* ─── Custom Recurrence Builder ─────────────────────────────────────────────── */
-.custom-recur {
+.custom-recurrence {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 12px;
@@ -576,7 +577,7 @@ body {
   gap: 14px;
 }
 
-.custom-recur-row {
+.custom-recurrence-row {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -585,7 +586,7 @@ body {
   color: var(--color-text);
 }
 
-.recur-inline-num {
+.recurrence-inline-number {
   width: 58px;
   padding: 5px 6px;
   border: 1px solid var(--color-border);
@@ -596,7 +597,7 @@ body {
   color: var(--color-text);
 }
 
-.recur-inline-date {
+.recurrence-inline-date {
   padding: 5px 8px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -606,14 +607,14 @@ body {
 }
 
 /* Day-of-week toggle buttons */
-.recur-day-btns {
+.recurrence-day-buttons {
   display: flex;
   gap: 5px;
   flex-wrap: nowrap;
   margin-top: 6px;
 }
 
-.recur-day-btn {
+.recurrence-day-button {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -632,26 +633,26 @@ body {
   touch-action: manipulation;
 }
 
-.recur-day-btn:hover {
+.recurrence-day-button:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
 
-.recur-day-btn.active {
+.recurrence-day-button.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: white;
 }
 
 /* End-condition radio group */
-.recur-end-options {
+.recurrence-end-options {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: 6px;
 }
 
-.recur-end-option {
+.recurrence-end-option {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -660,7 +661,7 @@ body {
   flex-wrap: wrap;
 }
 
-.recur-end-option input[type="radio"] {
+.recurrence-end-option input[type="radio"] {
   width: 16px;
   height: 16px;
   cursor: pointer;

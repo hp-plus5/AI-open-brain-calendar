@@ -1,27 +1,27 @@
 // All form fields for the event modal — purely presentational.
-// Receives values and setters from useEventForm; no data fetching here.
+// Receives values and setters from useEventForm via EventModal; no data fetching here.
 
 import type { Calendar } from '../../types/database'
 import LocationPicker from '../shared/LocationPicker'
 import RecurrencePicker from './RecurrencePicker'
 import type { EditScope } from './RecurrenceScopeChoice'
-import type { CustomEndType } from '../../utils/rrule'
+import type { RecurrenceEndType } from '../../utils/rrule'
 
 interface EventFormProps {
-  // Scope
-  isNew:          boolean
-  scopeChosen:    EditScope | null
-  isRecurring:    boolean
+  // Scope context — controls whether the recurrence picker is visible
+  isNew:       boolean
+  scopeChosen: EditScope | null
+  isRecurring: boolean
 
   // Basic fields
   title:          string
   setTitle:       (v: string) => void
   description:    string
   setDescription: (v: string) => void
-  startDT:        string
-  setStartDT:     (v: string) => void
-  endDT:          string
-  setEndDT:       (v: string) => void
+  startDateTime:  string
+  setStartDateTime: (v: string) => void
+  endDateTime:    string
+  setEndDateTime: (v: string) => void
   allDay:         boolean
   setAllDay:      (v: boolean) => void
 
@@ -31,22 +31,22 @@ interface EventFormProps {
   onLocationChange: (name: string, id: string | null) => void
 
   // Recurrence
-  recurrenceRule:    string
-  setRecurrenceRule: (v: string) => void
-  isCustomRrule:     boolean | string
-  customInterval:    number
-  setCustomInterval: (n: number) => void
-  customDays:        string[]
-  setCustomDays:     (days: string[]) => void
-  customEndType:     CustomEndType
-  setCustomEndType:  (t: CustomEndType) => void
-  customEndDate:     string
-  setCustomEndDate:  (d: string) => void
-  customEndCount:    number
-  setCustomEndCount: (n: number) => void
-  recurrenceOptions: { label: string; value: string }[]
+  recurrenceRule:         string
+  setRecurrenceRule:      (v: string) => void
+  isCustomRecurrenceRule: boolean | string
+  customInterval:         number
+  setCustomInterval:      (n: number) => void
+  customDays:             string[]
+  setCustomDays:          (days: string[]) => void
+  customEndType:          RecurrenceEndType
+  setCustomEndType:       (t: RecurrenceEndType) => void
+  customEndDate:          string
+  setCustomEndDate:       (d: string) => void
+  customEndCount:         number
+  setCustomEndCount:      (n: number) => void
+  recurrenceOptions:      { label: string; value: string }[]
 
-  // Calendars
+  // Calendar assignments
   calendars:              Calendar[]
   selectedCalendarIds:    string[]
   setSelectedCalendarIds: React.Dispatch<React.SetStateAction<string[]>>
@@ -59,12 +59,12 @@ export default function EventForm({
   isNew, scopeChosen,
   title, setTitle,
   description, setDescription,
-  startDT, setStartDT,
-  endDT, setEndDT,
+  startDateTime, setStartDateTime,
+  endDateTime, setEndDateTime,
   allDay, setAllDay,
   locationName, locationId, onLocationChange,
   recurrenceRule, setRecurrenceRule,
-  isCustomRrule,
+  isCustomRecurrenceRule,
   customInterval, setCustomInterval,
   customDays, setCustomDays,
   customEndType, setCustomEndType,
@@ -80,9 +80,9 @@ export default function EventForm({
 
       {/* Title */}
       <div className="form-group">
-        <label htmlFor="evt-title">Title *</label>
+        <label htmlFor="event-title">Title *</label>
         <input
-          id="evt-title"
+          id="event-title"
           type="text"
           value={title}
           onChange={e => setTitle(e.target.value)}
@@ -94,12 +94,12 @@ export default function EventForm({
       {/* All-day toggle */}
       <div className="form-checkbox-row">
         <input
-          id="evt-allday"
+          id="event-all-day"
           type="checkbox"
           checked={allDay}
           onChange={e => setAllDay(e.target.checked)}
         />
-        <label htmlFor="evt-allday" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '0.9rem', cursor: 'pointer' }}>
+        <label htmlFor="event-all-day" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '0.9rem', cursor: 'pointer' }}>
           All day
         </label>
       </div>
@@ -107,21 +107,21 @@ export default function EventForm({
       {/* Start / End times */}
       <div className="form-row">
         <div className="form-group">
-          <label htmlFor="evt-start">{allDay ? 'Start date' : 'Start (ET)'}</label>
+          <label htmlFor="event-start">{allDay ? 'Start date' : 'Start (Eastern Time)'}</label>
           <input
-            id="evt-start"
+            id="event-start"
             type={allDay ? 'date' : 'datetime-local'}
-            value={allDay ? startDT.slice(0, 10) : startDT}
-            onChange={e => setStartDT(allDay ? e.target.value + 'T00:00' : e.target.value)}
+            value={allDay ? startDateTime.slice(0, 10) : startDateTime}
+            onChange={e => setStartDateTime(allDay ? e.target.value + 'T00:00' : e.target.value)}
           />
         </div>
         <div className="form-group">
-          <label htmlFor="evt-end">{allDay ? 'End date' : 'End (ET)'}</label>
+          <label htmlFor="event-end">{allDay ? 'End date' : 'End (Eastern Time)'}</label>
           <input
-            id="evt-end"
+            id="event-end"
             type={allDay ? 'date' : 'datetime-local'}
-            value={allDay ? endDT.slice(0, 10) : endDT}
-            onChange={e => setEndDT(allDay ? e.target.value + 'T00:00' : e.target.value)}
+            value={allDay ? endDateTime.slice(0, 10) : endDateTime}
+            onChange={e => setEndDateTime(allDay ? e.target.value + 'T00:00' : e.target.value)}
           />
         </div>
       </div>
@@ -139,11 +139,11 @@ export default function EventForm({
       {/* Recurrence (only for new events or full-series edits) */}
       {(isNew || scopeChosen === 'series') && (
         <RecurrencePicker
-          startDT={startDT}
+          startDateTime={startDateTime}
           recurrenceRule={recurrenceRule}
-          isCustomRrule={isCustomRrule}
-          onRuleChange={v => {
-            if (v !== '__custom__') setRecurrenceRule(v)
+          isCustomRecurrenceRule={isCustomRecurrenceRule}
+          onRuleChange={value => {
+            if (value !== '__custom__') setRecurrenceRule(value)
             else setRecurrenceRule('__custom__')
           }}
           customInterval={customInterval}
@@ -160,26 +160,26 @@ export default function EventForm({
         />
       )}
 
-      {/* Calendars */}
+      {/* Calendar assignments */}
       {calendars.length > 0 && (
         <div className="form-group">
           <label>Calendars</label>
           <div className="calendar-picker">
-            {calendars.map(cal => (
-              <label key={cal.id} className="calendar-picker-option">
+            {calendars.map(calendar => (
+              <label key={calendar.id} className="calendar-picker-option">
                 <input
                   type="checkbox"
-                  checked={selectedCalendarIds.includes(cal.id)}
+                  checked={selectedCalendarIds.includes(calendar.id)}
                   onChange={e => {
                     if (e.target.checked) {
-                      setSelectedCalendarIds(prev => [...prev, cal.id])
+                      setSelectedCalendarIds(prev => [...prev, calendar.id])
                     } else {
-                      setSelectedCalendarIds(prev => prev.filter(id => id !== cal.id))
+                      setSelectedCalendarIds(prev => prev.filter(id => id !== calendar.id))
                     }
                   }}
                 />
-                <span className="calendar-picker-dot" style={{ backgroundColor: cal.color }} />
-                <span>{cal.name}</span>
+                <span className="calendar-picker-dot" style={{ backgroundColor: calendar.color }} />
+                <span>{calendar.name}</span>
               </label>
             ))}
           </div>
@@ -188,9 +188,9 @@ export default function EventForm({
 
       {/* Description */}
       <div className="form-group">
-        <label htmlFor="evt-desc">Description</label>
+        <label htmlFor="event-description">Description</label>
         <textarea
-          id="evt-desc"
+          id="event-description"
           value={description}
           onChange={e => setDescription(e.target.value)}
           placeholder="Optional notes"

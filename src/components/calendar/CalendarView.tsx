@@ -7,10 +7,9 @@ import type { CalendarEventWithLocation } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { useCalendarData } from '../../hooks/useCalendarData'
 import { useCalendarActions } from '../../hooks/useCalendarActions'
-import { toFCEvents, getEventCalendarIds } from '../../utils/fcTransform'
-import { fcStartToUTC } from '../../utils/timezone'
-import { dropRecurringOccurrence, copyCalendarMemberships } from '../../services/eventService'
-import { updateEvent } from '../../services/eventService'
+import { toFullCalendarEvents, getEventCalendarIds } from '../../utils/calendarTransform'
+import { fullCalendarStringToUTC } from '../../utils/timezone'
+import { dropRecurringOccurrence, copyCalendarMemberships, updateEvent } from '../../services/eventService'
 import CalendarGrid from './CalendarGrid'
 import CalendarSidebar from './CalendarSidebar'
 import EventModal from '../event/EventModal'
@@ -39,16 +38,21 @@ export default function CalendarView({ session }: CalendarViewProps) {
     reload, setCalendars,
   } = useCalendarData(session.user.id)
 
-  const actions = useCalendarActions((calId, newName) => {
-    setCalendars(prev => prev.map(c => c.id === calId ? { ...c, name: newName } : c))
+  // When a calendar is renamed, update it in local state immediately so the
+  // sidebar reflects the new name without waiting for a full data reload.
+  const actions = useCalendarActions((calendarId, newName) => {
+    setCalendars(prev => prev.map(calendar =>
+      calendar.id === calendarId ? { ...calendar, name: newName } : calendar
+    ))
   })
 
   const [modal, setModal] = useState<ModalState | null>(null)
 
-  // ─── FC event list (memoized) ───────────────────────────────────────────
+  // ─── FullCalendar event list (memoized) ─────────────────────────────────
 
-  const fcEvents = useMemo(
-    () => toFCEvents(dbEvents, calendars, eventCalendarsMap, actions.hiddenCalendarIds),
+  // Re-computed only when the underlying data or hidden-calendar set changes.
+  const fullCalendarEvents = useMemo(
+    () => toFullCalendarEvents(dbEvents, calendars, eventCalendarsMap, actions.hiddenCalendarIds),
     [dbEvents, calendars, eventCalendarsMap, actions.hiddenCalendarIds]
   )
 
@@ -58,40 +62,43 @@ export default function CalendarView({ session }: CalendarViewProps) {
     setModal({
       event:              null,
       showScopeChoice:    false,
-      defaultStart:       fcStartToUTC(selectInfo.startStr),
-      defaultEnd:         fcStartToUTC(selectInfo.endStr),
+      // Convert the FullCalendar floating-time string to a UTC ISO string
+      defaultStart:       fullCalendarStringToUTC(selectInfo.startStr),
+      defaultEnd:         fullCalendarStringToUTC(selectInfo.endStr),
       defaultAllDay:      selectInfo.allDay,
       initialCalendarIds: [],
     })
   }
 
   function handleEventClick(clickInfo: EventClickArg) {
-    const dbEvent    = clickInfo.event.extendedProps.dbEvent as CalendarEventWithLocation
-    const isRecurring = !!dbEvent.recurrence_rule && !dbEvent.parent_event_id
-    const occurrenceStart = fcStartToUTC(clickInfo.event.startStr)
-    const calIds     = getEventCalendarIds(dbEvent, eventCalendarsMap)
+    const dbEvent       = clickInfo.event.extendedProps.dbEvent as CalendarEventWithLocation
+    const isRecurring   = !!dbEvent.recurrence_rule && !dbEvent.parent_event_id
+    const occurrenceStart = fullCalendarStringToUTC(clickInfo.event.startStr)
+    const calendarIds   = getEventCalendarIds(dbEvent, eventCalendarsMap)
 
     setModal({
       event:              dbEvent,
       occurrenceStart,
       showScopeChoice:    isRecurring,
-      initialCalendarIds: calIds,
+      initialCalendarIds: calendarIds,
     })
   }
 
   async function handleEventDrop(dropInfo: EventDropArg) {
-    const dbEvent    = dropInfo.event.extendedProps.dbEvent as CalendarEventWithLocation
+    const dbEvent     = dropInfo.event.extendedProps.dbEvent as CalendarEventWithLocation
     const isRecurring = !!dbEvent.recurrence_rule && !dbEvent.parent_event_id
-    const newStart   = fcStartToUTC(dropInfo.event.startStr)
-    const newEnd     = dropInfo.event.endStr ? fcStartToUTC(dropInfo.event.endStr) : null
+    const newStart    = fullCalendarStringToUTC(dropInfo.event.startStr)
+    const newEnd      = dropInfo.event.endStr ? fullCalendarStringToUTC(dropInfo.event.endStr) : null
 
     try {
       if (isRecurring) {
-        const originalStart = fcStartToUTC(dropInfo.oldEvent.startStr)
+        // Dragging one occurrence of a recurring event creates an exception child row.
+        const originalStart = fullCalendarStringToUTC(dropInfo.oldEvent.startStr)
         const newId = await dropRecurringOccurrence(
           session.user.id, dbEvent, originalStart, newStart, newEnd
         )
-        // Copy parent's calendar memberships to the new exception row
+        // Copy parent's calendar memberships to the new exception row so it
+        // appears in the same calendars as the rest of the series.
         const parentId = dbEvent.parent_event_id ?? dbEvent.id
         await copyCalendarMemberships(parentId, newId, session.user.id, eventCalendarsMap)
       } else {
@@ -106,8 +113,8 @@ export default function CalendarView({ session }: CalendarViewProps) {
 
   // ─── Modal ──────────────────────────────────────────────────────────────
 
-  function closeModal()   { setModal(null) }
-  function handleSaved()  { setModal(null); reload() }
+  function closeModal()  { setModal(null) }
+  function handleSaved() { setModal(null); reload() }
 
   // ─── Render ─────────────────────────────────────────────────────────────
 
@@ -149,7 +156,7 @@ export default function CalendarView({ session }: CalendarViewProps) {
             </div>
           )}
           <CalendarGrid
-            events={fcEvents}
+            events={fullCalendarEvents}
             onDateSelect={handleDateSelect}
             onEventClick={handleEventClick}
             onEventDrop={handleEventDrop}

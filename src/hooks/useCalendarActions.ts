@@ -1,81 +1,81 @@
 // UI state and handlers for the calendar sidebar:
-// visibility toggling, calendar rename, and ICS export.
+// visibility toggling, calendar rename, and calendar export.
 
 import { useState } from 'react'
 import type { Calendar } from '../types/database'
 import { renameCalendar } from '../services/calendarService'
 import { fetchEventsForCalendar } from '../services/eventService'
-import { downloadICSZip } from '../utils/icsExport'
+import { downloadCalendarExport } from '../utils/calendarExport'
 
 interface UseCalendarActionsReturn {
   // Visibility
   hiddenCalendarIds:    Set<string>
-  handleToggleCalendar: (calId: string) => void
+  handleToggleCalendar: (calendarId: string) => void
 
   // Rename
-  renamingCalendarId:     string | null
-  renamingCalendarName:   string
+  renamingCalendarId:      string | null
+  renamingCalendarName:    string
   setRenamingCalendarName: React.Dispatch<React.SetStateAction<string>>
-  startRenamingCalendar:  (cal: Calendar) => void
-  commitRenameCalendar:   (calId: string) => Promise<void>
-  handleRenameKeyDown:    (e: React.KeyboardEvent, calId: string) => void
+  startRenamingCalendar:   (calendar: Calendar) => void
+  commitRenameCalendar:    (calendarId: string) => Promise<void>
+  handleRenameKeyDown:     (e: React.KeyboardEvent, calendarId: string) => void
 
   // Export
-  handleExportCalendar: (cal: Calendar) => Promise<void>
+  handleExportCalendar: (calendar: Calendar) => Promise<void>
 }
 
 export function useCalendarActions(
-  /** Called with the updated calendar list after a successful rename */
-  onCalendarRenamed: (calId: string, newName: string) => void
+  /** Called with the updated name after a successful rename, for optimistic UI update */
+  onCalendarRenamed: (calendarId: string, newName: string) => void
 ): UseCalendarActionsReturn {
-  const [hiddenCalendarIds,   setHiddenCalendarIds]   = useState<Set<string>>(new Set())
-  const [renamingCalendarId,  setRenamingCalendarId]  = useState<string | null>(null)
+  const [hiddenCalendarIds,    setHiddenCalendarIds]    = useState<Set<string>>(new Set())
+  const [renamingCalendarId,   setRenamingCalendarId]   = useState<string | null>(null)
   const [renamingCalendarName, setRenamingCalendarName] = useState('')
 
   // ─── Visibility ──────────────────────────────────────────────────────────
 
-  function handleToggleCalendar(calId: string) {
+  function handleToggleCalendar(calendarId: string) {
     setHiddenCalendarIds(prev => {
       const next = new Set(prev)
-      if (next.has(calId)) next.delete(calId)
-      else next.add(calId)
+      if (next.has(calendarId)) next.delete(calendarId)
+      else next.add(calendarId)
       return next
     })
   }
 
   // ─── Rename ──────────────────────────────────────────────────────────────
 
-  function startRenamingCalendar(cal: Calendar) {
-    setRenamingCalendarId(cal.id)
-    setRenamingCalendarName(cal.name)
+  function startRenamingCalendar(calendar: Calendar) {
+    setRenamingCalendarId(calendar.id)
+    setRenamingCalendarName(calendar.name)
   }
 
-  async function commitRenameCalendar(calId: string) {
-    const name = renamingCalendarName.trim()
+  async function commitRenameCalendar(calendarId: string) {
+    const trimmedName = renamingCalendarName.trim()
     setRenamingCalendarId(null)
-    if (!name) return
+    if (!trimmedName) return
     try {
-      await renameCalendar(calId, name)
-      onCalendarRenamed(calId, name)
+      await renameCalendar(calendarId, trimmedName)
+      onCalendarRenamed(calendarId, trimmedName)
     } catch {
       // Non-fatal: silently ignore rename failure (name reverts visually on next reload)
     }
   }
 
-  function handleRenameKeyDown(e: React.KeyboardEvent, calId: string) {
-    if (e.key === 'Enter')  void commitRenameCalendar(calId)
+  function handleRenameKeyDown(e: React.KeyboardEvent, calendarId: string) {
+    if (e.key === 'Enter')  void commitRenameCalendar(calendarId)
     if (e.key === 'Escape') setRenamingCalendarId(null)
   }
 
   // ─── Export ──────────────────────────────────────────────────────────────
 
-  async function handleExportCalendar(cal: Calendar) {
-    const result = await fetchEventsForCalendar(cal.id)
+  async function handleExportCalendar(calendar: Calendar) {
+    const result = await fetchEventsForCalendar(calendar.id)
     if (!result) {
       alert('No events in this calendar to export.')
       return
     }
-    await downloadICSZip(cal.name, result.masterEvents, result.allEvents)
+    await downloadCalendarExport(calendar.name, result.masterEvents, result.allEvents)
   }
 
   return {

@@ -63,13 +63,13 @@ export default function LocationPicker({ value, locationId, onChange }: Location
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const hasExactMatch = results.some(r => r.name.toLowerCase() === input.trim().toLowerCase())
+  const hasExactMatch = results.some(result => result.name.toLowerCase() === input.trim().toLowerCase())
   // Show "create new" option when there's typed text and no exact match
   const showCreateNew = input.trim().length > 0 && !hasExactMatch
 
-  function selectLocation(loc: Location) {
-    setInput(loc.name)
-    onChange(loc.name, loc.id)
+  function selectLocation(location: Location) {
+    setInput(location.name)
+    onChange(location.name, location.id)
     setOpen(false)
   }
 
@@ -126,15 +126,15 @@ export default function LocationPicker({ value, locationId, onChange }: Location
       )}
       {open && (results.length > 0 || showCreateNew) && (
         <div className="location-dropdown">
-          {results.map((loc, i) => (
+          {results.map((location, index) => (
             <div
-              key={loc.id}
-              className={`location-option ${i === focusedIdx ? 'focused' : ''}`}
-              onMouseDown={() => selectLocation(loc)}
+              key={location.id}
+              className={`location-option ${index === focusedIdx ? 'focused' : ''}`}
+              onMouseDown={() => selectLocation(location)}
             >
-              <div className="location-option-name">{loc.name}</div>
-              {loc.address && (
-                <div className="location-option-address">{loc.address}</div>
+              <div className="location-option-name">{location.name}</div>
+              {location.address && (
+                <div className="location-option-address">{location.address}</div>
               )}
             </div>
           ))}

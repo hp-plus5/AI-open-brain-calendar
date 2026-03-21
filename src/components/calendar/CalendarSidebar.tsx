@@ -4,17 +4,17 @@
 import type { Calendar } from '../../types/database'
 
 interface CalendarSidebarProps {
-  calendars:           Calendar[]
-  hiddenCalendarIds:   Set<string>
-  renamingCalendarId:  string | null
+  calendars:            Calendar[]
+  hiddenCalendarIds:    Set<string>
+  renamingCalendarId:   string | null
   renamingCalendarName: string
 
-  onToggle:          (calId: string) => void
-  onStartRename:     (cal: Calendar) => void
+  onToggle:          (calendarId: string) => void
+  onStartRename:     (calendar: Calendar) => void
   onRenameChange:    (name: string) => void
-  onRenameCommit:    (calId: string) => void
-  onRenameKeyDown:   (e: React.KeyboardEvent, calId: string) => void
-  onExport:          (cal: Calendar) => void
+  onRenameCommit:    (calendarId: string) => void
+  onRenameKeyDown:   (e: React.KeyboardEvent, calendarId: string) => void
+  onExport:          (calendar: Calendar) => void
 }
 
 export default function CalendarSidebar({
@@ -32,42 +32,42 @@ export default function CalendarSidebar({
   return (
     <aside className="calendar-sidebar">
       <div className="sidebar-section-title">Calendars</div>
-      {calendars.map(cal => (
-        <div key={cal.id} className="sidebar-calendar-item">
+      {calendars.map(calendar => (
+        <div key={calendar.id} className="sidebar-calendar-item">
           <label className="sidebar-calendar-label">
             <input
               type="checkbox"
               className="sidebar-calendar-checkbox"
-              checked={!hiddenCalendarIds.has(cal.id)}
-              onChange={() => onToggle(cal.id)}
+              checked={!hiddenCalendarIds.has(calendar.id)}
+              onChange={() => onToggle(calendar.id)}
             />
-            <span className="sidebar-calendar-dot" style={{ backgroundColor: cal.color }} />
-            {renamingCalendarId === cal.id ? (
+            <span className="sidebar-calendar-dot" style={{ backgroundColor: calendar.color }} />
+            {renamingCalendarId === calendar.id ? (
               <input
                 className="sidebar-calendar-rename-input"
                 value={renamingCalendarName}
                 autoFocus
                 onChange={e => onRenameChange(e.target.value)}
-                onBlur={() => onRenameCommit(cal.id)}
-                onKeyDown={e => onRenameKeyDown(e, cal.id)}
+                onBlur={() => onRenameCommit(calendar.id)}
+                onKeyDown={e => onRenameKeyDown(e, calendar.id)}
                 onClick={e => e.preventDefault()}
               />
             ) : (
-              <span className="sidebar-calendar-name">{cal.name}</span>
+              <span className="sidebar-calendar-name">{calendar.name}</span>
             )}
           </label>
           <div className="sidebar-calendar-actions">
             <button
               className="sidebar-export-btn"
-              title={`Rename ${cal.name}`}
-              onClick={() => onStartRename(cal)}
+              title={`Rename ${calendar.name}`}
+              onClick={() => onStartRename(calendar)}
             >
               ✎
             </button>
             <button
               className="sidebar-export-btn"
-              title={`Export ${cal.name} as .ics.zip`}
-              onClick={() => onExport(cal)}
+              title={`Export ${calendar.name} as a calendar file`}
+              onClick={() => onExport(calendar)}
             >
               ↓
             </button>

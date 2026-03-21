@@ -31,8 +31,8 @@ export async function loadEventLinks(): Promise<{ event_id: string; calendar_id:
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
-export async function renameCalendar(calId: string, name: string): Promise<void> {
-  const { error } = await supabase.from('calendars').update({ name }).eq('id', calId)
+export async function renameCalendar(calendarId: string, name: string): Promise<void> {
+  const { error } = await supabase.from('calendars').update({ name }).eq('id', calendarId)
   if (error) throw new Error(error.message)
 }
 
@@ -42,27 +42,27 @@ export async function renameCalendar(calId: string, name: string): Promise<void>
  * Guards against duplicate seeding are handled by the caller.
  */
 export async function seedDefaultCalendars(
-  userId: string,
+  userId:         string,
   existingEvents: CalendarEventWithLocation[]
 ): Promise<void> {
   const { data: created, error } = await supabase
     .from('calendars')
-    .insert(DEFAULT_CALENDARS.map(d => ({ ...d, user_id: userId })))
+    .insert(DEFAULT_CALENDARS.map(defaultCalendar => ({ ...defaultCalendar, user_id: userId })))
     .select()
   if (error || !created) return
 
   // Assign all events whose title starts with "AmTrust" to Work Holidays
-  const workHolidays = (created as Calendar[]).find(c => c.name === 'Work Holidays')
-  if (!workHolidays) return
+  const workHolidaysCalendar = (created as Calendar[]).find(calendar => calendar.name === 'Work Holidays')
+  if (!workHolidaysCalendar) return
 
-  const amtrustMasters = existingEvents.filter(
-    e => !e.parent_event_id && e.title.toLowerCase().startsWith('amtrust')
+  const amtrustMasterEvents = existingEvents.filter(
+    event => !event.parent_event_id && event.title.toLowerCase().startsWith('amtrust')
   )
-  if (amtrustMasters.length > 0) {
+  if (amtrustMasterEvents.length > 0) {
     await supabase.from('calendar_event_calendars').insert(
-      amtrustMasters.map(e => ({
-        event_id:    e.id,
-        calendar_id: workHolidays.id,
+      amtrustMasterEvents.map(event => ({
+        event_id:    event.id,
+        calendar_id: workHolidaysCalendar.id,
         user_id:     userId,
       }))
     )

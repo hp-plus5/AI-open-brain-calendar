@@ -6,17 +6,17 @@ import type { Session } from '@supabase/supabase-js'
 import type { CalendarEventWithLocation } from '../types/database'
 import type { EditScope } from '../components/event/RecurrenceScopeChoice'
 import {
-  toInputDT,
-  utcToEasternInput,
-  easternInputToUTC,
+  toInputDateTime,
+  utcToEasternTimeInput,
+  easternTimeInputToUTC,
   computeOccurrenceEndInput,
 } from '../utils/timezone'
 import {
-  parseCustomRrule,
-  buildCustomRrule,
+  parseCustomRecurrenceRule,
+  buildCustomRecurrenceRule,
   getRecurrenceOptions,
 } from '../utils/rrule'
-import type { CustomEndType, CustomRecur } from '../utils/rrule'
+import type { RecurrenceEndType, CustomRecurrenceConfig } from '../utils/rrule'
 import {
   createEvent,
   updateEvent,
@@ -47,46 +47,46 @@ export interface UseEventFormReturn {
   setScopeChosen: React.Dispatch<React.SetStateAction<EditScope | null>>
 
   // Derived flags
-  isNew:       boolean
-  isRecurring: boolean
-  isOverride:  boolean
+  isNew:        boolean
+  isRecurring:  boolean
+  isOverride:   boolean
   editingLabel: string
 
   // Basic fields
-  title:       string
-  setTitle:    React.Dispatch<React.SetStateAction<string>>
-  description: string
+  title:          string
+  setTitle:       React.Dispatch<React.SetStateAction<string>>
+  description:    string
   setDescription: React.Dispatch<React.SetStateAction<string>>
-  startDT:     string
-  setStartDT:  React.Dispatch<React.SetStateAction<string>>
-  endDT:       string
-  setEndDT:    React.Dispatch<React.SetStateAction<string>>
-  allDay:      boolean
-  setAllDay:   React.Dispatch<React.SetStateAction<boolean>>
+  startDateTime:  string
+  setStartDateTime: React.Dispatch<React.SetStateAction<string>>
+  endDateTime:    string
+  setEndDateTime: React.Dispatch<React.SetStateAction<string>>
+  allDay:         boolean
+  setAllDay:      React.Dispatch<React.SetStateAction<boolean>>
 
   // Location
-  locationName: string
+  locationName:    string
   setLocationName: React.Dispatch<React.SetStateAction<string>>
-  locationId:   string | null
-  setLocationId: React.Dispatch<React.SetStateAction<string | null>>
+  locationId:      string | null
+  setLocationId:   React.Dispatch<React.SetStateAction<string | null>>
 
   // Recurrence
-  recurrenceRule:    string
-  setRecurrenceRule: React.Dispatch<React.SetStateAction<string>>
-  recurrenceOptions: ReturnType<typeof getRecurrenceOptions>
-  isCustomRrule:     boolean | string
-  customInterval:    number
-  setCustomInterval: React.Dispatch<React.SetStateAction<number>>
-  customDays:        string[]
-  setCustomDays:     React.Dispatch<React.SetStateAction<string[]>>
-  customEndType:     CustomEndType
-  setCustomEndType:  React.Dispatch<React.SetStateAction<CustomEndType>>
-  customEndDate:     string
-  setCustomEndDate:  React.Dispatch<React.SetStateAction<string>>
-  customEndCount:    number
-  setCustomEndCount: React.Dispatch<React.SetStateAction<number>>
+  recurrenceRule:           string
+  setRecurrenceRule:        React.Dispatch<React.SetStateAction<string>>
+  recurrenceOptions:        ReturnType<typeof getRecurrenceOptions>
+  isCustomRecurrenceRule:   boolean | string
+  customInterval:           number
+  setCustomInterval:        React.Dispatch<React.SetStateAction<number>>
+  customDays:               string[]
+  setCustomDays:            React.Dispatch<React.SetStateAction<string[]>>
+  customEndType:            RecurrenceEndType
+  setCustomEndType:         React.Dispatch<React.SetStateAction<RecurrenceEndType>>
+  customEndDate:            string
+  setCustomEndDate:         React.Dispatch<React.SetStateAction<string>>
+  customEndCount:           number
+  setCustomEndCount:        React.Dispatch<React.SetStateAction<number>>
 
-  // Calendars
+  // Calendar assignments
   selectedCalendarIds:    string[]
   setSelectedCalendarIds: React.Dispatch<React.SetStateAction<string[]>>
 
@@ -112,10 +112,11 @@ export function useEventForm({
   initialCalendarIds,
   onSaved,
 }: UseEventFormProps): UseEventFormReturn {
-  const isNew       = event === null
+  const isNew      = event === null
   const isRecurring = !!event?.recurrence_rule && !event?.parent_event_id
-  // An override row is a child exception previously edited (parent_event_id set, no recurrence_rule)
-  const isOverride  = !isNew && !!event?.parent_event_id
+  // An override row is a child exception previously edited (parent_event_id is set,
+  // no recurrence_rule). It needs special delete handling — see handleDelete below.
+  const isOverride = !isNew && !!event?.parent_event_id
 
   // ─── Scope ──────────────────────────────────────────────────────────────
 
@@ -125,39 +126,42 @@ export function useEventForm({
 
   // ─── Derived defaults ───────────────────────────────────────────────────
 
-  const isAllDayEvent  = event?.all_day ?? defaultAllDay
-  const defaultStartET = defaultStart
-    ? toInputDT(defaultStart, defaultAllDay)
-    : utcToEasternInput(new Date().toISOString()).slice(0, 16)
-  const defaultEndET   = defaultEnd ? toInputDT(defaultEnd, defaultAllDay) : ''
+  const isAllDayEvent           = event?.all_day ?? defaultAllDay
+  const defaultStartEasternTime = defaultStart
+    ? toInputDateTime(defaultStart, defaultAllDay)
+    : utcToEasternTimeInput(new Date().toISOString()).slice(0, 16)
+  const defaultEndEasternTime   = defaultEnd ? toInputDateTime(defaultEnd, defaultAllDay) : ''
 
   // ─── Form state ─────────────────────────────────────────────────────────
 
   const [title,       setTitle]       = useState(event?.title ?? '')
   const [description, setDescription] = useState(event?.description ?? '')
-  const [startDT,     setStartDT]     = useState<string>(
+
+  const [startDateTime, setStartDateTime] = useState<string>(
     event
-      ? toInputDT(
+      ? toInputDateTime(
+          // For 'this' scope on a recurring event, seed the occurrence's own start time
           scopeChosen === 'this' && occurrenceStart ? occurrenceStart : event.start_time,
           isAllDayEvent
         )
-      : defaultStartET
+      : defaultStartEasternTime
   )
-  const [endDT,       setEndDT]       = useState<string>(
-    event?.end_time ? toInputDT(event.end_time, isAllDayEvent) : defaultEndET
+  const [endDateTime, setEndDateTime] = useState<string>(
+    event?.end_time ? toInputDateTime(event.end_time, isAllDayEvent) : defaultEndEasternTime
   )
-  const [allDay,      setAllDay]      = useState(event?.all_day ?? defaultAllDay)
-  const [locationName,  setLocationName]  = useState(event?.locations?.name ?? '')
-  const [locationId,    setLocationId]    = useState<string | null>(event?.location_id ?? null)
+
+  const [allDay,       setAllDay]      = useState(event?.all_day ?? defaultAllDay)
+  const [locationName, setLocationName] = useState(event?.locations?.name ?? '')
+  const [locationId,   setLocationId]   = useState<string | null>(event?.location_id ?? null)
   const [recurrenceRule, setRecurrenceRule] = useState(event?.recurrence_rule ?? '')
 
   // Custom recurrence builder — pre-populated from existing rule when editing
-  const initialCustom: CustomRecur = parseCustomRrule(event?.recurrence_rule ?? '')
-  const [customInterval,  setCustomInterval]  = useState(initialCustom.interval)
-  const [customDays,      setCustomDays]      = useState<string[]>(initialCustom.days)
-  const [customEndType,   setCustomEndType]   = useState<CustomEndType>(initialCustom.endType)
-  const [customEndDate,   setCustomEndDate]   = useState(initialCustom.endDate)
-  const [customEndCount,  setCustomEndCount]  = useState(initialCustom.endCount)
+  const initialCustomRecurrence: CustomRecurrenceConfig = parseCustomRecurrenceRule(event?.recurrence_rule ?? '')
+  const [customInterval,  setCustomInterval]  = useState(initialCustomRecurrence.interval)
+  const [customDays,      setCustomDays]      = useState<string[]>(initialCustomRecurrence.days)
+  const [customEndType,   setCustomEndType]   = useState<RecurrenceEndType>(initialCustomRecurrence.endType)
+  const [customEndDate,   setCustomEndDate]   = useState(initialCustomRecurrence.endDate)
+  const [customEndCount,  setCustomEndCount]  = useState(initialCustomRecurrence.endCount)
 
   const [saving, setSaving] = useState(false)
   const [error,  setError]  = useState<string | null>(null)
@@ -165,12 +169,12 @@ export function useEventForm({
 
   // ─── Scope side effect ──────────────────────────────────────────────────
 
-  // When scope is chosen as 'this', snap start/end to the clicked occurrence time
+  // When the user picks 'this occurrence', snap start/end to the clicked occurrence time
   useEffect(() => {
     if (event && scopeChosen === 'this' && occurrenceStart) {
-      setStartDT(toInputDT(occurrenceStart, event.all_day))
+      setStartDateTime(toInputDateTime(occurrenceStart, event.all_day))
       if (event.end_time) {
-        setEndDT(computeOccurrenceEndInput(
+        setEndDateTime(computeOccurrenceEndInput(
           occurrenceStart,
           event.start_time,
           event.end_time,
@@ -182,20 +186,22 @@ export function useEventForm({
 
   // ─── Recurrence helpers ─────────────────────────────────────────────────
 
-  const recurrenceOptions = getRecurrenceOptions(startDT)
-  const isCustomRrule = recurrenceRule &&
-    !recurrenceOptions.some(o => o.value === recurrenceRule && o.value !== '__custom__')
+  const recurrenceOptions       = getRecurrenceOptions(startDateTime)
+  // True when the stored rule doesn't match any preset option (meaning it's a custom rule)
+  const isCustomRecurrenceRule  = recurrenceRule &&
+    !recurrenceOptions.some(option => option.value === recurrenceRule && option.value !== '__custom__')
 
   // ─── Save ────────────────────────────────────────────────────────────────
 
   async function handleSave() {
-    if (!title.trim()) { setError('Title is required'); return }
-    if (!startDT)      { setError('Start time is required'); return }
+    if (!title.trim())   { setError('Title is required'); return }
+    if (!startDateTime)  { setError('Start time is required'); return }
     setSaving(true)
     setError(null)
 
     try {
-      // Resolve location: create new row if name typed but no id yet
+      // Resolve location: create a new row if the user typed a name but didn't pick
+      // an existing one from the dropdown
       let resolvedLocationId = locationId
       if (locationName.trim() && !locationId) {
         resolvedLocationId = await createLocation(session.user.id, locationName.trim())
@@ -203,52 +209,62 @@ export function useEventForm({
         resolvedLocationId = null
       }
 
-      const startUTC    = allDay ? startDT.slice(0, 10) + 'T00:00:00.000Z' : easternInputToUTC(startDT)
-      const endUTC      = endDT ? (allDay ? endDT.slice(0, 10) + 'T00:00:00.000Z' : easternInputToUTC(endDT)) : null
-      const inCustomMode = recurrenceRule === '__custom__' || Boolean(isCustomRrule)
-      const finalRrule  = inCustomMode
-        ? buildCustomRrule({ interval: customInterval, days: customDays, endType: customEndType, endDate: customEndDate, endCount: customEndCount })
+      const startUTC     = allDay
+        ? startDateTime.slice(0, 10) + 'T00:00:00.000Z'
+        : easternTimeInputToUTC(startDateTime)
+      const endUTC       = endDateTime
+        ? (allDay ? endDateTime.slice(0, 10) + 'T00:00:00.000Z' : easternTimeInputToUTC(endDateTime))
+        : null
+      const inCustomMode = recurrenceRule === '__custom__' || Boolean(isCustomRecurrenceRule)
+      const finalRule    = inCustomMode
+        ? buildCustomRecurrenceRule({
+            interval: customInterval,
+            days:     customDays,
+            endType:  customEndType,
+            endDate:  customEndDate,
+            endCount: customEndCount,
+          })
         : recurrenceRule
 
       if (isNew) {
         // ── Create new event ──
         const newId = await createEvent({
-          user_id:          session.user.id,
-          title:            title.trim(),
-          description:      description.trim() || null,
-          start_time:       startUTC,
-          end_time:         endUTC,
-          all_day:          allDay,
-          location_id:      resolvedLocationId,
-          recurrence_rule:  finalRrule || null,
+          user_id:         session.user.id,
+          title:           title.trim(),
+          description:     description.trim() || null,
+          start_time:      startUTC,
+          end_time:        endUTC,
+          all_day:         allDay,
+          location_id:     resolvedLocationId,
+          recurrence_rule: finalRule || null,
         })
         await saveCalendarMemberships(newId, selectedCalendarIds, session.user.id)
 
       } else if (scopeChosen === 'series' || !isRecurring) {
         // ── Edit entire series (or non-recurring event) ──
         await updateEvent(event!.id, {
-          title:            title.trim(),
-          description:      description.trim() || null,
-          start_time:       startUTC,
-          end_time:         endUTC,
-          all_day:          allDay,
-          location_id:      resolvedLocationId,
-          recurrence_rule:  finalRrule || null,
+          title:           title.trim(),
+          description:     description.trim() || null,
+          start_time:      startUTC,
+          end_time:        endUTC,
+          all_day:         allDay,
+          location_id:     resolvedLocationId,
+          recurrence_rule: finalRule || null,
         })
         await saveCalendarMemberships(event!.id, selectedCalendarIds, session.user.id)
 
       } else {
         // ── Edit just this occurrence: create an exception child row ──
         const newId = await createEvent({
-          user_id:          session.user.id,
-          title:            title.trim(),
-          description:      description.trim() || null,
-          start_time:       startUTC,
-          end_time:         endUTC,
-          all_day:          allDay,
-          location_id:      resolvedLocationId,
-          parent_event_id:  event!.parent_event_id ?? event!.id,
-          recurrence_id:    occurrenceStart ? new Date(occurrenceStart).toISOString() : startUTC,
+          user_id:         session.user.id,
+          title:           title.trim(),
+          description:     description.trim() || null,
+          start_time:      startUTC,
+          end_time:        endUTC,
+          all_day:         allDay,
+          location_id:     resolvedLocationId,
+          parent_event_id: event!.parent_event_id ?? event!.id,
+          recurrence_id:   occurrenceStart ? new Date(occurrenceStart).toISOString() : startUTC,
         })
         await saveCalendarMemberships(newId, selectedCalendarIds, session.user.id)
       }
@@ -284,10 +300,10 @@ export function useEventForm({
           event.all_day
         )
       } else if (isOverride) {
-        // Cancel an already-edited override row (flip is_cancelled, don't delete)
+        // Cancel an already-edited override row (flip is_cancelled, don't delete the row)
         await cancelOverride(event.id)
       } else {
-        // Delete the event entirely (cascades to children via FK)
+        // Delete the event entirely (cascades to children via foreign key)
         await deleteEvent(event.id)
       }
       onSaved()
@@ -308,13 +324,13 @@ export function useEventForm({
     isNew, isRecurring, isOverride, editingLabel,
     title, setTitle,
     description, setDescription,
-    startDT, setStartDT,
-    endDT, setEndDT,
+    startDateTime, setStartDateTime,
+    endDateTime, setEndDateTime,
     allDay, setAllDay,
     locationName, setLocationName,
     locationId, setLocationId,
     recurrenceRule, setRecurrenceRule,
-    recurrenceOptions, isCustomRrule,
+    recurrenceOptions, isCustomRecurrenceRule,
     customInterval, setCustomInterval,
     customDays, setCustomDays,
     customEndType, setCustomEndType,

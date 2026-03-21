@@ -12,7 +12,7 @@ interface UseCalendarDataReturn {
   eventCalendarsMap: Map<string, string[]>
   loadError:         string | null
   reload:            () => void
-  /** Optimistic update: replace the calendars list in-place (e.g. after rename) */
+  /** Optimistic update: replace the calendars list in-place (e.g. after a rename) */
   setCalendars:      React.Dispatch<React.SetStateAction<Calendar[]>>
 }
 
@@ -21,9 +21,14 @@ export function useCalendarData(userId: string): UseCalendarDataReturn {
   const [calendars,         setCalendars]          = useState<Calendar[]>([])
   const [eventCalendarsMap, setEventCalendarsMap]  = useState<Map<string, string[]>>(new Map())
   const [loadError,         setLoadError]          = useState<string | null>(null)
+
+  // Guard against StrictMode's double-invoke of effects triggering double seeding
   const seedingStartedRef = useRef(false)
 
-  const buildLinksMap = (links: { event_id: string; calendar_id: string }[]): Map<string, string[]> => {
+  // Build a Map<event_id, calendar_id[]> from the flat join-table rows
+  const buildEventCalendarsMap = (
+    links: { event_id: string; calendar_id: string }[]
+  ): Map<string, string[]> => {
     const map = new Map<string, string[]>()
     for (const link of links) {
       if (!map.has(link.event_id)) map.set(link.event_id, [])
@@ -32,20 +37,24 @@ export function useCalendarData(userId: string): UseCalendarDataReturn {
     return map
   }
 
-  const dedupeByName = (list: Calendar[]): Calendar[] => {
-    const seen = new Set<string>()
-    return list.filter(c => seen.has(c.name) ? false : (seen.add(c.name), true))
+  // Deduplicate calendars by name — StrictMode can double-invoke seeding,
+  // producing duplicate rows with different IDs
+  const deduplicateCalendarsByName = (calendarList: Calendar[]): Calendar[] => {
+    const seenNames = new Set<string>()
+    return calendarList.filter(calendar =>
+      seenNames.has(calendar.name) ? false : (seenNames.add(calendar.name), true)
+    )
   }
 
   const loadAll = useCallback(async () => {
     setLoadError(null)
 
     let eventsResult: Awaited<ReturnType<typeof loadEvents>>
-    let calList: Calendar[]
-    let links: { event_id: string; calendar_id: string }[]
+    let calendarList: Calendar[]
+    let eventLinks:   { event_id: string; calendar_id: string }[]
 
     try {
-      ;[eventsResult, calList, links] = await Promise.all([
+      ;[eventsResult, calendarList, eventLinks] = await Promise.all([
         loadEvents(),
         loadCalendars(),
         loadEventLinks(),
@@ -60,19 +69,19 @@ export function useCalendarData(userId: string): UseCalendarDataReturn {
       return
     }
 
-    const uniqueCalList = dedupeByName(calList)
+    const uniqueCalendarList = deduplicateCalendarsByName(calendarList)
     setDbEvents(eventsResult.events)
-    setCalendars(uniqueCalList)
-    setEventCalendarsMap(buildLinksMap(links))
+    setCalendars(uniqueCalendarList)
+    setEventCalendarsMap(buildEventCalendarsMap(eventLinks))
 
-    // Seed default calendars on first use — guard against StrictMode double-invoke
-    if (calList.length === 0 && !seedingStartedRef.current) {
+    // Seed default calendars on first use
+    if (calendarList.length === 0 && !seedingStartedRef.current) {
       seedingStartedRef.current = true
       await seedDefaultCalendars(userId, eventsResult.events)
       // Reload calendars and links after seeding
-      const [calList2, links2] = await Promise.all([loadCalendars(), loadEventLinks()])
-      setCalendars(dedupeByName(calList2))
-      setEventCalendarsMap(buildLinksMap(links2))
+      const [calendarList2, updatedLinks] = await Promise.all([loadCalendars(), loadEventLinks()])
+      setCalendars(deduplicateCalendarsByName(calendarList2))
+      setEventCalendarsMap(buildEventCalendarsMap(updatedLinks))
     }
   }, [userId])
 

@@ -30,7 +30,7 @@ export default function CalendarGrid({
   }
 
   return (
-    <div className="fc-wrapper">
+    <div className="calendar-grid-wrapper">
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, rrulePlugin]}

@@ -73,10 +73,10 @@ export default function EventModal({
           setTitle={form.setTitle}
           description={form.description}
           setDescription={form.setDescription}
-          startDT={form.startDT}
-          setStartDT={form.setStartDT}
-          endDT={form.endDT}
-          setEndDT={form.setEndDT}
+          startDateTime={form.startDateTime}
+          setStartDateTime={form.setStartDateTime}
+          endDateTime={form.endDateTime}
+          setEndDateTime={form.setEndDateTime}
           allDay={form.allDay}
           setAllDay={form.setAllDay}
           locationName={form.locationName}
@@ -84,7 +84,7 @@ export default function EventModal({
           onLocationChange={(name, id) => { form.setLocationName(name); form.setLocationId(id) }}
           recurrenceRule={form.recurrenceRule}
           setRecurrenceRule={form.setRecurrenceRule}
-          isCustomRrule={form.isCustomRrule}
+          isCustomRecurrenceRule={form.isCustomRecurrenceRule}
           customInterval={form.customInterval}
           setCustomInterval={form.setCustomInterval}
           customDays={form.customDays}

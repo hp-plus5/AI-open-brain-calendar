@@ -2,21 +2,24 @@
 // Purely presentational — all state lives in useEventForm.
 
 import { WEEKDAYS } from '../../utils/rrule'
-import type { CustomEndType } from '../../utils/rrule'
+import type { RecurrenceEndType } from '../../utils/rrule'
+
+// Full names used as accessible tooltip labels on the day-toggle buttons
+const FULL_WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 interface RecurrencePickerProps {
-  startDT:        string
+  startDateTime:  string
   recurrenceRule: string
-  isCustomRrule:  boolean | string
+  isCustomRecurrenceRule: boolean | string
   onRuleChange:   (value: string) => void
 
-  // Custom builder fields
+  // Custom weekly builder fields
   customInterval:    number
   setCustomInterval: (n: number) => void
   customDays:        string[]
   setCustomDays:     (days: string[]) => void
-  customEndType:     CustomEndType
-  setCustomEndType:  (t: CustomEndType) => void
+  customEndType:     RecurrenceEndType
+  setCustomEndType:  (t: RecurrenceEndType) => void
   customEndDate:     string
   setCustomEndDate:  (d: string) => void
   customEndCount:    number
@@ -25,11 +28,9 @@ interface RecurrencePickerProps {
   recurrenceOptions: { label: string; value: string }[]
 }
 
-const WEEKDAY_FULL_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
 export default function RecurrencePicker({
   recurrenceRule,
-  isCustomRrule,
+  isCustomRecurrenceRule,
   onRuleChange,
   customInterval,
   setCustomInterval,
@@ -43,27 +44,27 @@ export default function RecurrencePicker({
   setCustomEndCount,
   recurrenceOptions,
 }: RecurrencePickerProps) {
-  const showCustomBuilder = recurrenceRule === '__custom__' || Boolean(isCustomRrule)
+  const showCustomBuilder = recurrenceRule === '__custom__' || Boolean(isCustomRecurrenceRule)
 
   return (
     <div className="form-group">
-      <label htmlFor="evt-recur">Recurrence</label>
+      <label htmlFor="event-recurrence">Recurrence</label>
 
       <select
-        id="evt-recur"
-        value={isCustomRrule ? '__custom__' : recurrenceRule}
+        id="event-recurrence"
+        value={isCustomRecurrenceRule ? '__custom__' : recurrenceRule}
         onChange={e => onRuleChange(e.target.value)}
       >
-        {recurrenceOptions.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        {recurrenceOptions.map(option => (
+          <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </select>
 
       {showCustomBuilder && (
-        <div className="custom-recur">
+        <div className="custom-recurrence">
 
           {/* ── Interval ── */}
-          <div className="custom-recur-row">
+          <div className="custom-recurrence-row">
             <span>Every</span>
             <input
               type="number"
@@ -71,7 +72,7 @@ export default function RecurrencePicker({
               max={52}
               value={customInterval}
               onChange={e => setCustomInterval(Math.max(1, parseInt(e.target.value) || 1))}
-              className="recur-inline-num"
+              className="recurrence-inline-number"
             />
             <span>week{customInterval !== 1 ? 's' : ''}</span>
           </div>
@@ -79,21 +80,21 @@ export default function RecurrencePicker({
           {/* ── Day toggles ── */}
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label>Repeat on</label>
-            <div className="recur-day-btns">
-              {WEEKDAYS.map((d, i) => (
+            <div className="recurrence-day-buttons">
+              {WEEKDAYS.map((weekday, index) => (
                 <button
-                  key={d.abbr}
+                  key={weekday.abbreviation}
                   type="button"
-                  aria-pressed={customDays.includes(d.abbr)}
-                  title={WEEKDAY_FULL_NAMES[i]}
-                  className={`recur-day-btn${customDays.includes(d.abbr) ? ' active' : ''}`}
+                  aria-pressed={customDays.includes(weekday.abbreviation)}
+                  title={FULL_WEEKDAY_NAMES[index]}
+                  className={`recurrence-day-button${customDays.includes(weekday.abbreviation) ? ' active' : ''}`}
                   onClick={() => setCustomDays(
-                    customDays.includes(d.abbr)
-                      ? customDays.filter(x => x !== d.abbr)
-                      : [...customDays, d.abbr]
+                    customDays.includes(weekday.abbreviation)
+                      ? customDays.filter(day => day !== weekday.abbreviation)
+                      : [...customDays, weekday.abbreviation]
                   )}
                 >
-                  {d.label}
+                  {weekday.label}
                 </button>
               ))}
             </div>
@@ -102,16 +103,16 @@ export default function RecurrencePicker({
           {/* ── End condition ── */}
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label>Ends</label>
-            <div className="recur-end-options">
+            <div className="recurrence-end-options">
 
-              <label className="recur-end-option">
-                <input type="radio" name="recur-end" checked={customEndType === 'never'}
+              <label className="recurrence-end-option">
+                <input type="radio" name="recurrence-end" checked={customEndType === 'never'}
                   onChange={() => setCustomEndType('never')} />
                 <span>Never</span>
               </label>
 
-              <label className="recur-end-option">
-                <input type="radio" name="recur-end" checked={customEndType === 'date'}
+              <label className="recurrence-end-option">
+                <input type="radio" name="recurrence-end" checked={customEndType === 'date'}
                   onChange={() => setCustomEndType('date')} />
                 <span>On</span>
                 {customEndType === 'date' && (
@@ -119,13 +120,13 @@ export default function RecurrencePicker({
                     type="date"
                     value={customEndDate}
                     onChange={e => setCustomEndDate(e.target.value)}
-                    className="recur-inline-date"
+                    className="recurrence-inline-date"
                   />
                 )}
               </label>
 
-              <label className="recur-end-option">
-                <input type="radio" name="recur-end" checked={customEndType === 'count'}
+              <label className="recurrence-end-option">
+                <input type="radio" name="recurrence-end" checked={customEndType === 'count'}
                   onChange={() => setCustomEndType('count')} />
                 <span>After</span>
                 {customEndType === 'count' && (
@@ -135,7 +136,7 @@ export default function RecurrencePicker({
                     max={999}
                     value={customEndCount}
                     onChange={e => setCustomEndCount(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="recur-inline-num"
+                    className="recurrence-inline-number"
                   />
                 )}
                 <span>occurrence{customEndType === 'count' && customEndCount !== 1 ? 's' : ''}</span>
