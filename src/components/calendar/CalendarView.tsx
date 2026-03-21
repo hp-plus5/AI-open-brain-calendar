@@ -13,6 +13,8 @@ import { dropRecurringOccurrence, copyCalendarMemberships, updateEvent } from '.
 import CalendarGrid from './CalendarGrid'
 import CalendarSidebar from './CalendarSidebar'
 import EventModal from '../event/EventModal'
+import Drawer from '../common/Drawer'
+import { useDrawer } from '../../hooks/useDrawer'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,6 +47,8 @@ export default function CalendarView({ session }: CalendarViewProps) {
       calendar.id === calendarId ? { ...calendar, name: newName } : calendar
     ))
   })
+
+  const drawer = useDrawer()
 
   const [modal, setModal] = useState<ModalState | null>(null)
 
@@ -121,7 +125,17 @@ export default function CalendarView({ session }: CalendarViewProps) {
   return (
     <div className="calendar-layout">
       <header className="calendar-topbar">
-        <span className="calendar-topbar-title">Open Brain Calendar</span>
+        <div className="calendar-topbar-start">
+          <button
+            className="calendar-menu-toggle btn btn-ghost"
+            onClick={drawer.toggle}
+            aria-label="Toggle calendar list"
+            aria-expanded={drawer.isOpen}
+          >
+            ☰
+          </button>
+          <span className="calendar-topbar-title">Open Brain Calendar</span>
+        </div>
         <div className="calendar-topbar-actions">
           <button
             className="btn btn-primary"
@@ -136,18 +150,25 @@ export default function CalendarView({ session }: CalendarViewProps) {
       </header>
 
       <div className="calendar-content">
-        <CalendarSidebar
-          calendars={calendars}
-          hiddenCalendarIds={actions.hiddenCalendarIds}
-          renamingCalendarId={actions.renamingCalendarId}
-          renamingCalendarName={actions.renamingCalendarName}
-          onToggle={actions.handleToggleCalendar}
-          onStartRename={actions.startRenamingCalendar}
-          onRenameChange={actions.setRenamingCalendarName}
-          onRenameCommit={actions.commitRenameCalendar}
-          onRenameKeyDown={actions.handleRenameKeyDown}
-          onExport={actions.handleExportCalendar}
-        />
+        <Drawer
+          isOpen={drawer.isOpen}
+          onClose={drawer.close}
+          ariaLabel="Calendar list"
+        >
+          <CalendarSidebar
+            calendars={calendars}
+            hiddenCalendarIds={actions.hiddenCalendarIds}
+            renamingCalendarId={actions.renamingCalendarId}
+            renamingCalendarName={actions.renamingCalendarName}
+            onToggle={actions.handleToggleCalendar}
+            onStartRename={actions.startRenamingCalendar}
+            onRenameChange={actions.setRenamingCalendarName}
+            onRenameCommit={actions.commitRenameCalendar}
+            onRenameKeyDown={actions.handleRenameKeyDown}
+            onExport={actions.handleExportCalendar}
+            onClose={drawer.close}
+          />
+        </Drawer>
 
         <div className="calendar-main">
           {loadError && (
