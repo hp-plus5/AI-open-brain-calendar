@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import AuthScreen from './components/Auth'
-import CalendarView from './components/CalendarView'
+import CalendarView from './components/calendar/CalendarView'
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
