@@ -8,10 +8,11 @@ import { useMediaQuery } from './useMediaQuery'
 const MOBILE_QUERY = '(max-width: 768px)'
 
 interface UseDrawerReturn {
-  isOpen: boolean
-  open:   () => void
-  close:  () => void
-  toggle: () => void
+  isOpen:   boolean
+  isMobile: boolean
+  open:     () => void
+  close:    () => void
+  toggle:   () => void
 }
 
 export function useDrawer(): UseDrawerReturn {
@@ -28,5 +29,5 @@ export function useDrawer(): UseDrawerReturn {
   const close  = useCallback(() => setIsOpen(false), [])
   const toggle = useCallback(() => setIsOpen(v => !v), [])
 
-  return { isOpen, open, close, toggle }
+  return { isOpen, isMobile, open, close, toggle }
 }
