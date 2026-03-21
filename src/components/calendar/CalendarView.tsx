@@ -1,6 +1,7 @@
 // Top-level view: owns modal state and event-drop handling; composes everything else.
 
 import { useState, useMemo } from 'react'
+import { format } from 'date-fns'
 import type { EventClickArg, DateSelectArg, DateClickArg, EventDropArg } from '@fullcalendar/core'
 import type { Session } from '@supabase/supabase-js'
 import type { CalendarEventWithLocation } from '../../types/database'
@@ -49,8 +50,15 @@ export default function CalendarView({ session }: CalendarViewProps) {
   })
 
   const drawer = useDrawer()
+  const { isMobile } = drawer
 
   const [modal, setModal] = useState<ModalState | null>(null)
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date())
+
+  const isCurrentYear = currentDate.getFullYear() === new Date().getFullYear()
+  const monthLabel = isCurrentYear
+    ? format(currentDate, 'MMMM')
+    : format(currentDate, 'MMMM yyyy')
 
   // ─── FullCalendar event list (memoized) ─────────────────────────────────
 
@@ -143,26 +151,17 @@ export default function CalendarView({ session }: CalendarViewProps) {
     <div className="calendar-layout">
       <header className="calendar-topbar">
         <div className="calendar-topbar-start">
-          <button
-            className="calendar-menu-toggle btn btn-ghost"
-            onClick={drawer.toggle}
-            aria-label="Toggle calendar list"
-            aria-expanded={drawer.isOpen}
-          >
-            ☰
-          </button>
-          <span className="calendar-topbar-title">Open Brain Calendar</span>
-        </div>
-        <div className="calendar-topbar-actions">
-          <button
-            className="btn btn-primary"
-            onClick={() => setModal({ event: null, showScopeChoice: false, initialCalendarIds: [] })}
-          >
-            + New Event
-          </button>
-          <button className="btn btn-ghost" onClick={() => supabase.auth.signOut()}>
-            Sign out
-          </button>
+          {isMobile && (
+            <button
+              className="calendar-menu-toggle btn btn-ghost"
+              onClick={drawer.toggle}
+              aria-label="Toggle calendar list"
+              aria-expanded={drawer.isOpen}
+            >
+              ☰
+            </button>
+          )}
+          <span className="calendar-topbar-title">{monthLabel}</span>
         </div>
       </header>
 
@@ -183,7 +182,8 @@ export default function CalendarView({ session }: CalendarViewProps) {
             onRenameCommit={actions.commitRenameCalendar}
             onRenameKeyDown={actions.handleRenameKeyDown}
             onExport={actions.handleExportCalendar}
-            onClose={drawer.close}
+            onClose={isMobile ? drawer.close : undefined}
+            onSignOut={() => supabase.auth.signOut()}
           />
         </Drawer>
 
@@ -199,9 +199,19 @@ export default function CalendarView({ session }: CalendarViewProps) {
             onDateClick={handleDateClick}
             onEventClick={handleEventClick}
             onEventDrop={handleEventDrop}
+            onDatesSet={setCurrentDate}
           />
         </div>
       </div>
+
+      {/* FAB (Floating Action Button) for creating a new event */}
+      <button
+        className="fab-new-event"
+        onClick={() => setModal({ event: null, showScopeChoice: false, initialCalendarIds: [] })}
+        aria-label="New Event"
+      >
+        +
+      </button>
 
       {modal && (
         <EventModal

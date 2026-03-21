@@ -17,6 +17,7 @@ interface CalendarSidebarProps {
   onExport:          (calendar: Calendar) => void
   /** When provided, renders a close button (visible on mobile only via CSS) */
   onClose?:          () => void
+  onSignOut?:        () => void
 }
 
 export default function CalendarSidebar({
@@ -31,6 +32,7 @@ export default function CalendarSidebar({
   onRenameKeyDown,
   onExport,
   onClose,
+  onSignOut,
 }: CalendarSidebarProps) {
   return (
     <aside className="calendar-sidebar">
@@ -88,6 +90,13 @@ export default function CalendarSidebar({
           </div>
         </div>
       ))}
+      {onSignOut && (
+        <div className="calendar-sidebar__footer">
+          <button className="calendar-sidebar__signout" onClick={onSignOut}>
+            Sign out
+          </button>
+        </div>
+      )}
     </aside>
   )
 }
