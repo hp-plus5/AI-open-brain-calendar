@@ -7,11 +7,12 @@ import dayGridPlugin     from '@fullcalendar/daygrid'
 import timeGridPlugin    from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import rrulePlugin       from '@fullcalendar/rrule'
-import type { EventInput, EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core'
+import type { EventInput, EventClickArg, DateSelectArg, DateClickArg, EventDropArg } from '@fullcalendar/core'
 
 interface CalendarGridProps {
   events:        EventInput[]
   onDateSelect:  (info: DateSelectArg)  => void
+  onDateClick:   (info: DateClickArg)   => void
   onEventClick:  (info: EventClickArg)  => void
   onEventDrop:   (info: EventDropArg)   => void
 }
@@ -19,6 +20,7 @@ interface CalendarGridProps {
 export default function CalendarGrid({
   events,
   onDateSelect,
+  onDateClick,
   onEventClick,
   onEventDrop,
 }: CalendarGridProps) {
@@ -49,6 +51,7 @@ export default function CalendarGrid({
         dayMaxEvents={true}
         nowIndicator={true}
         select={handleDateSelect}
+        dateClick={onDateClick}
         eventClick={onEventClick}
         eventDrop={onEventDrop}
         moreLinkClick="popover"
