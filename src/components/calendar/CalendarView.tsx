@@ -160,9 +160,6 @@ export default function CalendarView({ session }: CalendarViewProps) {
           >
             + New Event
           </button>
-          <button className="btn btn-ghost" onClick={() => supabase.auth.signOut()}>
-            Sign out
-          </button>
         </div>
       </header>
 
@@ -184,6 +181,7 @@ export default function CalendarView({ session }: CalendarViewProps) {
             onRenameKeyDown={actions.handleRenameKeyDown}
             onExport={actions.handleExportCalendar}
             onClose={drawer.close}
+            onSignOut={() => supabase.auth.signOut()}
           />
         </Drawer>
 

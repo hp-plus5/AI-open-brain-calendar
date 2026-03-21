@@ -139,6 +139,7 @@ body {
 .calendar-sidebar {
   width: 210px;
   flex-shrink: 0;
+  height: 100%;
   overflow-y: auto;
   padding: 14px 12px;
   border-right: 1px solid var(--color-border);
@@ -280,6 +281,27 @@ body {
 /* Toggle button (hamburger) and close button are hidden on desktop */
 .calendar-menu-toggle       { display: none; }
 .calendar-sidebar__close-btn { display: none; }
+
+.calendar-sidebar__footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.calendar-sidebar__signout {
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px 0;
+  opacity: 0.6;
+}
+
+.calendar-sidebar__signout:hover {
+  opacity: 1;
+  color: var(--color-text);
+}
 
 /* ─── Mobile (≤ 768px) ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
