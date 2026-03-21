@@ -410,6 +410,37 @@ body {
   color: var(--color-text);
 }
 
+/* ─── Floating Action Button ────────────────────────────────────────────────── */
+.fab-new-event {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.fab-new-event:hover {
+  background-color: var(--color-primary-dark);
+  transform: scale(1.07);
+}
+
+.fab-new-event:active {
+  transform: scale(0.96);
+}
+
 /* ─── Modal ──────────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;

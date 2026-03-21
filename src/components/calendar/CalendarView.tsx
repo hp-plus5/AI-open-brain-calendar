@@ -153,14 +153,6 @@ export default function CalendarView({ session }: CalendarViewProps) {
           </button>
           <span className="calendar-topbar-title">Open Brain Calendar</span>
         </div>
-        <div className="calendar-topbar-actions">
-          <button
-            className="btn btn-primary"
-            onClick={() => setModal({ event: null, showScopeChoice: false, initialCalendarIds: [] })}
-          >
-            + New Event
-          </button>
-        </div>
       </header>
 
       <div className="calendar-content">
@@ -200,6 +192,15 @@ export default function CalendarView({ session }: CalendarViewProps) {
           />
         </div>
       </div>
+
+      {/* FAB (Floating Action Button) for creating a new event */}
+      <button
+        className="fab-new-event"
+        onClick={() => setModal({ event: null, showScopeChoice: false, initialCalendarIds: [] })}
+        aria-label="New Event"
+      >
+        +
+      </button>
 
       {modal && (
         <EventModal
