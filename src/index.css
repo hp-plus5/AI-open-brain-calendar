@@ -688,7 +688,7 @@ body {
    * Derivation: font-size × 1.5 ≤ 2 × slot-height  →  font-size ≤ slot-height × 1.333
    * The min() caps at 0.75 rem so we never exceed the normal label size.
    */
-  font-size: min(0.75rem, calc(var(--slot-height, 24px) * 1.333));
+  font-size: min(1em, calc(var(--slot-height, 24px) * 1.333));
 }
 
 .fc {
