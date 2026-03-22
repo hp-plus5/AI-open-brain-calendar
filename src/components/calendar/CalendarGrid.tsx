@@ -7,7 +7,8 @@ import dayGridPlugin     from '@fullcalendar/daygrid'
 import timeGridPlugin    from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import rrulePlugin       from '@fullcalendar/rrule'
-import type { EventInput, EventClickArg, DateSelectArg, DateClickArg, EventDropArg } from '@fullcalendar/core'
+import type { EventInput, EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core'
+import type { DateClickArg } from '@fullcalendar/interaction'
 
 interface CalendarGridProps {
   events:        EventInput[]

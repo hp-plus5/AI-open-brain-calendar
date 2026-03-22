@@ -1,7 +1,8 @@
 // Top-level view: owns modal state and event-drop handling; composes everything else.
 
 import { useState, useMemo } from 'react'
-import type { EventClickArg, DateSelectArg, DateClickArg, EventDropArg } from '@fullcalendar/core'
+import type { EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core'
+import type { DateClickArg } from '@fullcalendar/interaction'
 import type { Session } from '@supabase/supabase-js'
 import type { CalendarEventWithLocation } from '../../types/database'
 import { supabase } from '../../lib/supabase'
