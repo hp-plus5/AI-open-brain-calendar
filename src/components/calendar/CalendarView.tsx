@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
-import type { EventClickArg, DateSelectArg, DateClickArg, EventDropArg } from '@fullcalendar/core'
+import type { EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core'
+import type { DateClickArg } from '@fullcalendar/interaction'
 import type { Session } from '@supabase/supabase-js'
 import type { CalendarEventWithLocation } from '../../types/database'
 import { supabase } from '../../lib/supabase'

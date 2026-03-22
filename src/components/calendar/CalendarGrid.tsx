@@ -7,7 +7,8 @@ import dayGridPlugin     from '@fullcalendar/daygrid'
 import timeGridPlugin    from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import rrulePlugin       from '@fullcalendar/rrule'
-import type { EventInput, EventClickArg, DateSelectArg, DateClickArg, EventDropArg, DatesSetArg } from '@fullcalendar/core'
+import type { EventInput, EventClickArg, DateSelectArg, EventDropArg, DatesSetArg } from '@fullcalendar/core'
+import type { DateClickArg } from '@fullcalendar/interaction'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 
 const DEFAULT_SLOT_HEIGHT = 24
